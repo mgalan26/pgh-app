@@ -1,0 +1,12 @@
+Options -MultiViews
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /index.html [L]
+
+# No cachear archivos críticos de Flutter
+<FilesMatch "(index\.html|flutter_bootstrap\.js|flutter_service_worker\.js|main\.dart\.js)$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+  Header set Expires 0
+</FilesMatch>
