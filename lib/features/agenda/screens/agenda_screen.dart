@@ -143,7 +143,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
                     color: Color(0xFFC9A84C),
                     fontSize: 10,
                     letterSpacing: 2)),
-                Text('Agenda de Eventos',
+                Text('Agenda de Eventos [v3]',
                   style: TextStyle(
                     color: Color(0xFFF0E8D8),
                     fontSize: 18,
