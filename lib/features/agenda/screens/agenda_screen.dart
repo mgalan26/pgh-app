@@ -76,8 +76,13 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
           loading: () => const Center(
             child: CircularProgressIndicator(color: AppTheme.goldColor)),
           error: (e, _) => Center(
-            child: Text('Error: $e',
-                style: const TextStyle(color: Colors.redAccent))),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('ERROR SUPABASE:', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                Text('$e', style: const TextStyle(color: Colors.redAccent)),
+              ],
+            )),
           data: (todos) {
             final eventos = _filtrar(todos);
             return Column(
