@@ -71,6 +71,14 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0D0D0D),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF666666)),
+          onPressed: () => context.go('/'),
+        ),
+      ),
       body: SafeArea(
         child: asyncEventos.when(
           loading: () => const Center(
@@ -143,7 +151,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
                     color: Color(0xFFC9A84C),
                     fontSize: 10,
                     letterSpacing: 2)),
-                Text('Agenda de Eventos [v3]',
+                Text('Agenda de Eventos',
                   style: TextStyle(
                     color: Color(0xFFF0E8D8),
                     fontSize: 18,

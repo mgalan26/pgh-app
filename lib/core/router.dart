@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pgh_app/core/providers/auth_provider.dart';
+import 'package:pgh_app/features/home/screens/home_screen.dart';
 import 'package:pgh_app/features/agenda/screens/agenda_screen.dart';
 import 'package:pgh_app/features/agenda/screens/evento_detalle_screen.dart';
 import 'package:pgh_app/features/agenda/screens/ponente_detalle_screen.dart';
@@ -15,13 +16,15 @@ import 'package:pgh_app/features/gestion/screens/mi_entidad_screen.dart';
 import 'package:pgh_app/features/gestion/screens/mi_perfil_screen.dart';
 import 'package:pgh_app/features/admin/screens/cola_organizadores_screen.dart';
 import 'package:pgh_app/features/admin/screens/cola_eventos_screen.dart';
-import 'package:pgh_app/shared/screens/shell_screen.dart';
 
 class AppRoutes {
-  static const agenda              = '/';
+  static const home                = '/';
+  static const agenda              = '/agenda';
   static const eventoDetalle       = '/eventos/:id';
   static const ponenteDetalle      = '/ponentes/:id';
   static const entidadDetalle      = '/entidades/:id';
+  static const loginEntidad        = '/login/entidad';
+  static const loginAdmin          = '/login/admin';
   static const login               = '/login';
   static const registroUsuario     = '/registro/usuario';
   static const registroOrganizador = '/registro/organizador';
@@ -39,90 +42,97 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
   return GoRouter(
-    initialLocation: AppRoutes.agenda,
+    initialLocation: AppRoutes.home,
     redirect: (context, state) {
       final isLoggedIn = authState.value?.session != null;
       if (state.matchedLocation.startsWith('/gestion') && !isLoggedIn) {
-        return AppRoutes.login;
+        return AppRoutes.loginEntidad;
       }
       if (state.matchedLocation.startsWith('/admin') && !isLoggedIn) {
-        return AppRoutes.login;
+        return AppRoutes.loginAdmin;
       }
       return null;
     },
     routes: [
-      ShellRoute(
-        builder: (context, state, child) => ShellScreen(child: child),
-        routes: [
-          GoRoute(
-            path: AppRoutes.agenda,
-            builder: (context, state) => const AgendaScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.eventoDetalle,
-            builder: (context, state) => EventoDetalleScreen(
-              id: state.pathParameters['id']!,
-            ),
-          ),
-          GoRoute(
-            path: AppRoutes.ponenteDetalle,
-            builder: (context, state) => PonenteDetalleScreen(
-              id: state.pathParameters['id']!,
-            ),
-          ),
-          GoRoute(
-            path: AppRoutes.entidadDetalle,
-            builder: (context, state) => EntidadDetalleScreen(
-              id: state.pathParameters['id']!,
-            ),
-          ),
-          GoRoute(
-            path: AppRoutes.login,
-            builder: (context, state) => const LoginScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.registroUsuario,
-            builder: (context, state) => const RegistroUsuarioScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.registroOrganizador,
-            builder: (context, state) => const RegistroOrganizadorScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.esperaAprobacion,
-            builder: (context, state) => const EsperaAprobacionScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.misEventos,
-            builder: (context, state) => const MisEventosScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.crearEvento,
-            builder: (context, state) => const EventoFormScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.editarEvento,
-            builder: (context, state) => EventoFormScreen(
-              eventoId: state.pathParameters['id'],
-            ),
-          ),
-          GoRoute(
-            path: AppRoutes.miEntidad,
-            builder: (context, state) => const MiEntidadScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.miPerfil,
-            builder: (context, state) => const MiPerfilScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.colaOrganizadores,
-            builder: (context, state) => const ColaOrganizadoresScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.colaEventos,
-            builder: (context, state) => const ColaEventosScreen(),
-          ),
-        ],
+      GoRoute(
+        path: AppRoutes.home,
+        builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.agenda,
+        builder: (context, state) => const AgendaScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.eventoDetalle,
+        builder: (context, state) => EventoDetalleScreen(
+          id: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.ponenteDetalle,
+        builder: (context, state) => PonenteDetalleScreen(
+          id: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.entidadDetalle,
+        builder: (context, state) => EntidadDetalleScreen(
+          id: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.loginEntidad,
+        builder: (context, state) => const LoginScreen(contexto: LoginContexto.entidad),
+      ),
+      GoRoute(
+        path: AppRoutes.loginAdmin,
+        builder: (context, state) => const LoginScreen(contexto: LoginContexto.admin),
+      ),
+      GoRoute(
+        path: AppRoutes.login,
+        builder: (context, state) => const LoginScreen(contexto: LoginContexto.entidad),
+      ),
+      GoRoute(
+        path: AppRoutes.registroUsuario,
+        builder: (context, state) => const RegistroUsuarioScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.registroOrganizador,
+        builder: (context, state) => const RegistroOrganizadorScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.esperaAprobacion,
+        builder: (context, state) => const EsperaAprobacionScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.misEventos,
+        builder: (context, state) => const MisEventosScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.crearEvento,
+        builder: (context, state) => const EventoFormScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editarEvento,
+        builder: (context, state) => EventoFormScreen(
+          eventoId: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.miEntidad,
+        builder: (context, state) => const MiEntidadScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.miPerfil,
+        builder: (context, state) => const MiPerfilScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.colaOrganizadores,
+        builder: (context, state) => const ColaOrganizadoresScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.colaEventos,
+        builder: (context, state) => const ColaEventosScreen(),
       ),
     ],
   );

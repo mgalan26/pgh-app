@@ -6,8 +6,11 @@ import 'package:pgh_app/core/providers/auth_provider.dart';
 import 'package:pgh_app/core/router.dart';
 import 'package:pgh_app/core/theme.dart';
 
+enum LoginContexto { entidad, admin }
+
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  final LoginContexto contexto;
+  const LoginScreen({super.key, required this.contexto});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -24,7 +27,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Escucha el retorno del redirect de Google
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.signedIn && mounted) {
         _rutarTrasLogin(data.session?.user.email ?? '');
@@ -39,16 +41,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  // ── Enrutamiento común ───────────────────────────────────────────────
   Future<void> _rutarTrasLogin(String email) async {
     if (!mounted) return;
     final emailLower = email.toLowerCase();
+    final esAdmin = emailLower == 'mgalan26@gmail.com';
 
-    if (emailLower == 'mgalan26@gmail.com') {
+    // Si es admin y vino por la opción admin → panel admin
+    if (esAdmin && widget.contexto == LoginContexto.admin) {
       context.go(AppRoutes.colaOrganizadores);
       return;
     }
 
+    // Si es admin pero vino por entidad → error
+    if (esAdmin && widget.contexto == LoginContexto.entidad) {
+      _snack('Usa la opción "Soy administrador" para acceder');
+      await Supabase.instance.client.auth.signOut();
+      return;
+    }
+
+    // Si vino por admin pero no es admin → error
+    if (widget.contexto == LoginContexto.admin && !esAdmin) {
+      _snack('No tienes permisos de administrador');
+      await Supabase.instance.client.auth.signOut();
+      return;
+    }
+
+    // Flujo entidad
     final org = await ref.read(organizadorProvider.future);
     if (!mounted) return;
 
@@ -69,7 +87,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // ── Login con email/contraseña ───────────────────────────────────────
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _cargando = true);
@@ -91,14 +108,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // ── Login con Google ─────────────────────────────────────────────────
   Future<void> _loginGoogle() async {
     setState(() => _googleCargando = true);
     try {
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
       );
-      // El resultado llega por onAuthStateChange en initState
     } catch (e) {
       _snack('Error al conectar con Google');
     } finally {
@@ -114,11 +129,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ));
   }
 
-  // ── UI ───────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final titulo = widget.contexto == LoginContexto.admin
+        ? 'Acceso administrador'
+        : 'Acceso para entidades';
+
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
+      appBar: AppBar(
+        backgroundColor: AppTheme.darkBg,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppTheme.textSecondary),
+          onPressed: () => context.go(AppRoutes.home),
+        ),
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -130,7 +156,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo
                     const Text('PGH',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -140,16 +165,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           letterSpacing: 4,
                         )),
                     const SizedBox(height: 4),
-                    const Text('Parlamento Global Hispano',
+                    Text(titulo,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppTheme.textSecondary,
                           fontSize: 13,
                           letterSpacing: 1,
                         )),
                     const SizedBox(height: 40),
 
-                    // ── Google ──────────────────────────────────────
                     OutlinedButton.icon(
                       onPressed: _googleCargando ? null : _loginGoogle,
                       style: OutlinedButton.styleFrom(
@@ -175,41 +199,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
 
                     const SizedBox(height: 20),
-
-                    // ── Separador ───────────────────────────────────
                     Row(children: [
-                      const Expanded(
-                          child: Divider(color: AppTheme.darkBorder)),
+                      const Expanded(child: Divider(color: AppTheme.darkBorder)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text('o',
-                            style: const TextStyle(
-                                color: AppTheme.textMuted, fontSize: 12)),
+                        child: Text('o', style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
                       ),
-                      const Expanded(
-                          child: Divider(color: AppTheme.darkBorder)),
+                      const Expanded(child: Divider(color: AppTheme.darkBorder)),
                     ]),
-
                     const SizedBox(height: 20),
 
-                    // ── Email ────────────────────────────────────────
                     TextFormField(
                       controller: _emailCtrl,
                       keyboardType: TextInputType.emailAddress,
                       style: const TextStyle(color: AppTheme.textPrimary),
-                      decoration:
-                          const InputDecoration(labelText: 'Email'),
+                      decoration: const InputDecoration(labelText: 'Email'),
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Campo obligatorio';
-                        }
+                        if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
                         if (!v.contains('@')) return 'Email no válido';
                         return null;
                       },
                     ),
                     const SizedBox(height: 12),
 
-                    // ── Contraseña ───────────────────────────────────
                     TextFormField(
                       controller: _passCtrl,
                       obscureText: _obscure,
@@ -218,31 +230,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: 'Contraseña',
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscure
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
+                            _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                             color: AppTheme.textMuted,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
-                      validator: (v) => (v == null || v.isEmpty)
-                          ? 'Campo obligatorio'
-                          : null,
+                      validator: (v) => (v == null || v.isEmpty) ? 'Campo obligatorio' : null,
                       onFieldSubmitted: (_) => _login(),
                     ),
                     const SizedBox(height: 28),
 
-                    // ── Botón email/pass ─────────────────────────────
                     ElevatedButton(
                       onPressed: _cargando ? null : _login,
                       child: _cargando
                           ? const SizedBox(
                               height: 20, width: 20,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppTheme.darkBg))
+                                  strokeWidth: 2, color: AppTheme.darkBg))
                           : const Text('Iniciar sesión'),
                     ),
                     const SizedBox(height: 20),
