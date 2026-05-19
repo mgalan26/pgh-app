@@ -44,35 +44,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _rutarTrasLogin(String email) async {
     if (!mounted) return;
     final emailLower = email.toLowerCase();
-    final esAdmin = emailLower == 'mgalan26@gmail.com';
 
-    // Si es admin y vino por la opción admin → panel admin
-    if (esAdmin && widget.contexto == LoginContexto.admin) {
-      context.go(AppRoutes.colaOrganizadores);
+    // Admin: va a agenda (el tab admin se ilumina solo)
+    if (emailLower == 'mgalan26@gmail.com') {
+      context.go(AppRoutes.agenda);
       return;
     }
 
-    // Si es admin pero vino por entidad → error
-    if (esAdmin && widget.contexto == LoginContexto.entidad) {
-      _snack('Usa la opción "Soy administrador" para acceder');
-      await Supabase.instance.client.auth.signOut();
-      return;
-    }
-
-    // Si vino por admin pero no es admin → error
-    if (widget.contexto == LoginContexto.admin && !esAdmin) {
-      _snack('No tienes permisos de administrador');
-      await Supabase.instance.client.auth.signOut();
-      return;
-    }
-
-    // Flujo entidad
+    // Comprobar si tiene perfil de organizador
     final org = await ref.read(organizadorProvider.future);
     if (!mounted) return;
 
     if (org == null) {
-      _snack('Tu email no está registrado como organizador');
-      await Supabase.instance.client.auth.signOut();
+      // Sin perfil: va a agenda como espectador
+      context.go(AppRoutes.agenda);
       return;
     }
 
@@ -80,7 +65,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       case 'pendiente':
         context.go(AppRoutes.esperaAprobacion);
       case 'aprobado':
-        context.go(AppRoutes.misEventos);
+        // Va a agenda (el tab entidad se ilumina solo)
+        context.go(AppRoutes.agenda);
       default:
         _snack('Tu cuenta ha sido ${org.estado.name}. Contacta con el administrador.');
         await Supabase.instance.client.auth.signOut();
@@ -141,7 +127,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         backgroundColor: AppTheme.darkBg,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.textSecondary),
-          onPressed: () => context.go(AppRoutes.home),
+          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.agenda),
         ),
         elevation: 0,
       ),

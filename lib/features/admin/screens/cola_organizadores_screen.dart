@@ -39,6 +39,11 @@ class ColaOrganizadoresScreen extends ConsumerWidget {
             onPressed: () => context.go(AppRoutes.colaEventos),
           ),
           IconButton(
+            icon: const Icon(Icons.record_voice_over_outlined),
+            tooltip: 'Ponentes',
+            onPressed: () => context.go(AppRoutes.ponentes),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar sesión',
             onPressed: () async {

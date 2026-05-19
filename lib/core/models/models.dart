@@ -56,6 +56,7 @@ class Entidad {
     verificada:   json['verificada'] ?? false,
     activa:       json['activa'] ?? true,
     createdAt:    DateTime.parse(json['created_at']),
+    logoUrl:      json['logo_url'],
   );
 }
 
@@ -110,6 +111,9 @@ class Organizador {
     rol:         RolUsuario.values.byName(json['rol']),
     estado:      EstadoRegistro.values.byName(json['estado']),
     createdAt:   DateTime.parse(json['created_at']),
+    entidad:     json['entidades'] != null
+                   ? Entidad.fromJson(json['entidades'] as Map<String, dynamic>)
+                   : null,
   );
 }
 
@@ -230,6 +234,8 @@ class Evento {
   final int visitas;
   final DateTime createdAt;
   final String? portadaUrl;
+  final String? ponenteId;
+  final Ponente? ponente;
   final List<EventoImagen> imagenes;
   final List<Ponente> ponentes;
   final Venue? venue;
@@ -267,6 +273,8 @@ class Evento {
     required this.createdAt,
     this.portadaUrl,
     this.imagenes = const [],
+    this.ponenteId,
+    this.ponente,
     this.ponentes = const [],
     this.venue,
     this.entidadNombre,
@@ -317,6 +325,10 @@ class Evento {
     visitas:             json['visitas'] ?? 0,
     createdAt:           DateTime.parse(json['created_at']),
     portadaUrl:          json['portada_url'],
+    ponenteId:           json['ponente_id'],
+    ponente:             json['ponentes'] != null
+                           ? Ponente.fromJson(json['ponentes'])
+                           : null,
     entidadNombre:       json['entidad_nombre'],
     entidadLogoUrl:      json['entidad_logo_url'],
     entidadVerificada:   json['entidad_verificada'] ?? false,

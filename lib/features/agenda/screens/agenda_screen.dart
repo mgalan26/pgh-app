@@ -12,7 +12,7 @@ final agendaProvider =
     FutureProvider.autoDispose<List<Evento>>((ref) async {
   final data = await Supabase.instance.client
       .from('eventos')
-      .select('*, entidades(nombre, verificada)')
+      .select('*, entidades(nombre, verificada), ponentes(*)')
       .eq('estado', 'publicado')
       .order('fecha_inicio', ascending: true);
 
@@ -74,10 +74,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D0D0D),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF666666)),
-          onPressed: () => context.go('/'),
-        ),
+        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: asyncEventos.when(
@@ -206,20 +203,6 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
                 onSelected: (v) => setState(() => _filtroEntidad = v),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          _ToggleFiltroGroup(
-            opciones: const ['Gratuito', 'Presencial', 'Online'],
-            activos: [
-              _filtroGratuito == true,
-              _filtroPresencial == true,
-              _filtroPresencial == false,
-            ],
-            onTap: (i) => setState(() {
-              if (i == 0) _filtroGratuito = _filtroGratuito == true ? null : true;
-              if (i == 1) _filtroPresencial = _filtroPresencial == true ? null : true;
-              if (i == 2) _filtroPresencial = _filtroPresencial == false ? null : false;
-            }),
           ),
         ],
       ),
@@ -397,6 +380,23 @@ class _EventoCard extends StatelessWidget {
                 style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
             ],
           ]),
+          if (evento.ponente != null) ...[
+            const SizedBox(height: 4),
+            Row(children: [
+              const Icon(Icons.person_outline,
+                color: Color(0xFF888888), size: 12),
+              const SizedBox(width: 3),
+              Text(evento.ponente!.nombreCompleto,
+                style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
+              if (evento.ponente!.cargo != null) ...[
+                const Text(' · ',
+                  style: TextStyle(color: Color(0xFF444444), fontSize: 11)),
+                Flexible(child: Text(evento.ponente!.cargo!,
+                  style: const TextStyle(color: Color(0xFF666666), fontSize: 10),
+                  overflow: TextOverflow.ellipsis)),
+              ],
+            ]),
+          ],
           if (evento.entidadNombre != null) ...[
             const SizedBox(height: 4),
             Row(children: [

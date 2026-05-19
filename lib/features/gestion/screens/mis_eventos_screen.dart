@@ -45,7 +45,7 @@ class MisEventosScreen extends ConsumerWidget {
                 ? IconButton(
                     icon: const Icon(Icons.admin_panel_settings_outlined),
                     tooltip: 'Panel de administración',
-                    onPressed: () => context.go(AppRoutes.colaOrganizadores),
+                    onPressed: () => context.go(AppRoutes.admin),
                   )
                 : const SizedBox.shrink(),
             loading: () => const SizedBox.shrink(),
@@ -113,14 +113,7 @@ class MisEventosScreen extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                   itemCount: eventos.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) => _TarjetaEvento(
-                    evento: eventos[i],
-                    onEdit: () async {
-                      final id = eventos[i]['id'] as String;
-                      await context.push('/gestion/eventos/$id/editar');
-                      ref.invalidate(misEventosProvider);
-                    },
-                  ),
+                  itemBuilder: (_, i) => _TarjetaEvento(evento: eventos[i]),
                 );
               },
             ),
@@ -140,41 +133,93 @@ class _CabeceraOrganizador extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
         color: AppTheme.darkCard,
         border: Border(bottom: BorderSide(color: AppTheme.darkBorder)),
       ),
-      child: Row(
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: AppTheme.goldColor.withAlpha(30),
-            child: Text(
-              org.nombre.isNotEmpty ? org.nombre[0].toUpperCase() : '?',
-              style: const TextStyle(
-                  color: AppTheme.goldColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Fila del organizador
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
               children: [
-                Text(org.nombreCompleto,
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppTheme.goldColor.withAlpha(30),
+                  child: Text(
+                    org.nombre.isNotEmpty ? org.nombre[0].toUpperCase() : '?',
                     style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14)),
-                if (org.entidad != null)
-                  Text(org.entidad!.nombre,
+                        color: AppTheme.goldColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(org.nombreCompleto,
                       style: const TextStyle(
-                          color: AppTheme.textMuted, fontSize: 12)),
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14)),
+                ),
               ],
             ),
           ),
+          // Botón de la entidad — navega a Mi Entidad
+          if (org.entidad != null)
+            InkWell(
+              onTap: () => context.go(AppRoutes.miEntidad),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppTheme.darkBorder),
+                      ),
+                      child: org.entidad!.logoUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Image.network(
+                                org.entidad!.logoUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.business,
+                                    color: AppTheme.textMuted,
+                                    size: 16),
+                              ),
+                            )
+                          : const Icon(Icons.business,
+                              color: AppTheme.textMuted, size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(org.entidad!.nombre,
+                              style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500)),
+                          const Text('Editar perfil de entidad',
+                              style: TextStyle(
+                                  color: AppTheme.goldColor,
+                                  fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right,
+                        color: AppTheme.textMuted, size: 18),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -185,8 +230,7 @@ class _CabeceraOrganizador extends StatelessWidget {
 
 class _TarjetaEvento extends StatelessWidget {
   final Map<String, dynamic> evento;
-  final VoidCallback onEdit;
-  const _TarjetaEvento({required this.evento, required this.onEdit});
+  const _TarjetaEvento({required this.evento});
 
   Color _colorEstado(String estado) => switch (estado) {
         'publicado'  => Colors.greenAccent,
@@ -233,10 +277,7 @@ class _TarjetaEvento extends StatelessWidget {
         : '—';
 
     return Card(
-      child: InkWell(
-        onTap: onEdit,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
+      child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,18 +345,10 @@ class _TarjetaEvento extends StatelessWidget {
                   Text(_modalidad(evento),
                       style: const TextStyle(
                           color: AppTheme.textMuted, fontSize: 11)),
-                  const Spacer(),
-                  const Icon(Icons.edit_outlined,
-                      size: 13, color: AppTheme.textMuted),
-                  const SizedBox(width: 4),
-                  const Text('Editar',
-                      style: TextStyle(
-                          color: AppTheme.textMuted, fontSize: 11)),
                 ],
               ),
             ],
           ),
-        ),
       ),
     );
   }

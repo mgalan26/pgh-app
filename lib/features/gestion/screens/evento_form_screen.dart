@@ -43,6 +43,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   // Información básica
   final _nombreCtrl      = TextEditingController();
   final _descripcionCtrl = TextEditingController();
+  final _portadaUrlCtrl  = TextEditingController();
   String? _tipo;
 
   // Fecha y hora
@@ -76,7 +77,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   @override
   void dispose() {
     for (final c in [
-      _nombreCtrl, _descripcionCtrl, _ciudadCtrl, _venueNombreCtrl,
+      _nombreCtrl, _descripcionCtrl, _portadaUrlCtrl, _ciudadCtrl, _venueNombreCtrl,
       _urlOnlineCtrl, _urlReservaCtrl, _emailContactoCtrl, _enlaceWebCtrl,
       _coorgNombreCtrl, _coorgWebCtrl,
     ]) { c.dispose(); }
@@ -210,6 +211,9 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
         'coorganizador_web':   _coorgWebCtrl.text.trim().isEmpty
                                  ? null
                                  : _coorgWebCtrl.text.trim(),
+        'portada_url':         _portadaUrlCtrl.text.trim().isEmpty
+                                 ? null
+                                 : _portadaUrlCtrl.text.trim(),
         'estado':              estado,
         'visitas':             0,
       };
@@ -285,6 +289,38 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
                 hint: 'Describe brevemente el evento…',
                 maxLines: 4,
               ),
+              const SizedBox(height: 12),
+              _campo(
+                controller: _portadaUrlCtrl,
+                label: 'URL imagen de portada',
+                hint: 'https://...',
+                keyboardType: TextInputType.url,
+                onChanged: (_) => setState(() {}),
+              ),
+              if (_portadaUrlCtrl.text.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    _portadaUrlCtrl.text.trim(),
+                    height: 130,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.redAccent.withAlpha(80)),
+                      ),
+                      child: const Center(
+                        child: Text('URL no válida o sin acceso',
+                            style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ]),
 
             _seccion('Fecha y horario', [
@@ -479,6 +515,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
     int maxLines = 1,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    ValueChanged<String>? onChanged,
   }) => TextFormField(
     controller: controller,
     maxLines: maxLines,
@@ -486,6 +523,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
     style: const TextStyle(color: AppTheme.textPrimary),
     decoration: InputDecoration(labelText: label, hintText: hint),
     validator: validator,
+    onChanged: onChanged,
   );
 
   Widget _dropdownTipo() => DropdownButtonFormField<String>(
