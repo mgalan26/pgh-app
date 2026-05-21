@@ -335,33 +335,76 @@ class _EventoCard extends StatelessWidget {
   }
 
   Future<void> _confirmarEliminar(BuildContext context) async {
-    final ok = await showDialog<bool>(
+    final ok = await showModalBottomSheet<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
-        title: const Text('Eliminar evento',
-            style: TextStyle(color: AppTheme.textPrimary)),
-        content: Text(
-          '¿Eliminar "${evento['nombre']}"? Esta acción no se puede deshacer.',
-          style: const TextStyle(color: AppTheme.textSecondary),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
-          TextButton(
+      backgroundColor: AppTheme.darkCard,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(Icons.delete_outline, color: Colors.redAccent, size: 36),
+            const SizedBox(height: 12),
+            Text(
+              '¿Eliminar "${evento['nombre']}"?',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Esta acción no se puede deshacer.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-              child: const Text('Eliminar')),
-        ],
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Sí, eliminar'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context, false),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.textMuted,
+                side: const BorderSide(color: AppTheme.darkBorder),
+              ),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
       ),
     );
     if (ok != true) return;
-    await Supabase.instance.client
-        .from('eventos')
-        .delete()
-        .eq('id', evento['id'] as String);
-    onRefresh();
+    try {
+      await Supabase.instance.client
+          .from('eventos')
+          .delete()
+          .eq('id', evento['id'] as String);
+      onRefresh();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Evento eliminado'),
+          backgroundColor: AppTheme.darkCard,
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al eliminar: $e'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
   }
 
   Future<void> _abrirEdicion(BuildContext context) async {
