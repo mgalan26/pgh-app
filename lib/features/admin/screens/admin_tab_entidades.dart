@@ -68,24 +68,11 @@ class AdminTabEntidades extends ConsumerWidget {
             );
           },
         ),
-        // FAB: nueva entidad + organizador
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton.extended(
-            heroTag: 'fab_entidades',
-            onPressed: () => _abrirAltaOrganizador(context, ref),
-            backgroundColor: AppTheme.goldColor,
-            foregroundColor: AppTheme.darkBg,
-            icon: const Icon(Icons.business),
-            label: const Text('Nueva entidad'),
-          ),
-        ),
       ],
     );
   }
 
-  static Future<void> _abrirAltaOrganizador(
+  static Future<void> abrirAltaOrganizador(
       BuildContext context, WidgetRef ref) async {
     await showModalBottomSheet(
       context: context,

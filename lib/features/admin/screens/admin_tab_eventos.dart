@@ -91,23 +91,11 @@ class AdminTabEventos extends ConsumerWidget {
             );
           },
         ),
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton.extended(
-            heroTag: 'fab_eventos',
-            onPressed: () => _abrirNuevoEvento(context, ref),
-            backgroundColor: AppTheme.goldColor,
-            foregroundColor: AppTheme.darkBg,
-            icon: const Icon(Icons.event),
-            label: const Text('Nuevo evento'),
-          ),
-        ),
       ],
     );
   }
 
-  static Future<void> _abrirNuevoEvento(BuildContext context, WidgetRef ref) async {
+  static Future<void> abrirNuevoEvento(BuildContext context, WidgetRef ref) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,

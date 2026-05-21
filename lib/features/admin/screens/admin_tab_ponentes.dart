@@ -59,24 +59,11 @@ class AdminTabPonentes extends ConsumerWidget {
             );
           },
         ),
-        // FAB
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: FloatingActionButton.extended(
-            heroTag: 'fab_ponentes',
-            onPressed: () => _abrirForm(context, ref, ponente: null),
-            backgroundColor: AppTheme.goldColor,
-            foregroundColor: AppTheme.darkBg,
-            icon: const Icon(Icons.person_add),
-            label: const Text('Nuevo ponente'),
-          ),
-        ),
       ],
     );
   }
 
-  static Future<void> _abrirForm(
+  static Future<void> abrirForm(
     BuildContext context,
     WidgetRef ref, {
     required Ponente? ponente,
@@ -144,7 +131,7 @@ class _PonenteTile extends StatelessWidget {
               icon: const Icon(Icons.edit_outlined,
                   color: AppTheme.goldColor, size: 20),
               onPressed: () async {
-                await AdminTabPonentes._abrirForm(context, ref, ponente: ponente);
+                await AdminTabPonentes.abrirForm(context, ref, ponente: ponente);
               },
             ),
             IconButton(
