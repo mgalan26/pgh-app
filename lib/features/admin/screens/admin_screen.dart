@@ -7,6 +7,7 @@ import 'package:pgh_app/core/theme.dart';
 import 'admin_tab_eventos.dart';
 import 'admin_tab_ponentes.dart';
 import 'admin_tab_entidades.dart';
+import 'admin_nuevo_evento_screen.dart';
 
 class AdminScreen extends ConsumerWidget {
   const AdminScreen({super.key});
@@ -14,7 +15,7 @@ class AdminScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Builder(builder: (context) {
         final tabController = DefaultTabController.of(context);
         return AnimatedBuilder(
@@ -22,16 +23,16 @@ class AdminScreen extends ConsumerWidget {
           builder: (context, _) {
             final tab = tabController.index;
 
-            // Botón "+" que cambia según el tab activo
-            String label;
-            VoidCallback onTap;
+            // Botón "+" que cambia según el tab activo (tab 3 tiene su propio form)
+            String? label;
+            VoidCallback? onTap;
             if (tab == 0) {
               label = 'Nuevo evento';
               onTap = () => AdminTabEventos.abrirNuevoEvento(context, ref);
             } else if (tab == 1) {
               label = 'Nuevo ponente';
               onTap = () => AdminTabPonentes.abrirForm(context, ref, ponente: null);
-            } else {
+            } else if (tab == 2) {
               label = 'Nueva entidad';
               onTap = () => AdminTabEntidades.abrirAltaOrganizador(context, ref);
             }
@@ -62,12 +63,13 @@ class AdminScreen extends ConsumerWidget {
                     style: TextStyle(color: AppTheme.textPrimary, fontSize: 16)),
                 ]),
                 actions: [
-                  TextButton.icon(
-                    onPressed: onTap,
-                    icon: const Icon(Icons.add, size: 16),
-                    label: Text(label, style: const TextStyle(fontSize: 13)),
-                    style: TextButton.styleFrom(foregroundColor: AppTheme.goldColor),
-                  ),
+                  if (label != null)
+                    TextButton.icon(
+                      onPressed: onTap,
+                      icon: const Icon(Icons.add, size: 16),
+                      label: Text(label, style: const TextStyle(fontSize: 13)),
+                      style: TextButton.styleFrom(foregroundColor: AppTheme.goldColor),
+                    ),
                   IconButton(
                     icon: const Icon(Icons.logout, color: AppTheme.textSecondary),
                     tooltip: 'Cerrar sesión',
@@ -87,6 +89,7 @@ class AdminScreen extends ConsumerWidget {
                     Tab(icon: Icon(Icons.event_note_outlined, size: 20), text: 'Eventos'),
                     Tab(icon: Icon(Icons.record_voice_over_outlined, size: 20), text: 'Ponentes'),
                     Tab(icon: Icon(Icons.business_outlined, size: 20), text: 'Entidades'),
+                    Tab(icon: Icon(Icons.add_circle, size: 20), text: 'Nuevo'),
                   ],
                 ),
               ),
@@ -95,6 +98,7 @@ class AdminScreen extends ConsumerWidget {
                   AdminTabEventos(),
                   AdminTabPonentes(),
                   AdminTabEntidades(),
+                  AdminNuevoEventoTab(),
                 ],
               ),
             );
