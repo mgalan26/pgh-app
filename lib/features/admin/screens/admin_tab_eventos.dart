@@ -110,10 +110,18 @@ class AdminTabEventos extends ConsumerWidget {
 
 // ─── Tarjeta evento ───────────────────────────────────────────────────────────
 
-class _EventoCard extends StatelessWidget {
+class _EventoCard extends StatefulWidget {
   final Map<String, dynamic> evento;
   final VoidCallback onRefresh;
   const _EventoCard({required this.evento, required this.onRefresh});
+
+  @override
+  State<_EventoCard> createState() => _EventoCardState();
+}
+
+class _EventoCardState extends State<_EventoCard> {
+  Map<String, dynamic> get evento => widget.evento;
+  VoidCallback get onRefresh => widget.onRefresh;
 
   Color _colorEstado(String s) => switch (s) {
         'publicado'  => Colors.greenAccent,
