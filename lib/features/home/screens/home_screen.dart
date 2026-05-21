@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pgh_app/core/router.dart';
 import 'package:pgh_app/core/theme.dart';
 
@@ -8,8 +9,21 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final email = Supabase.instance.client.auth.currentUser?.email?.toLowerCase() ?? '';
+    final isAdmin = email == 'mgalan26@gmail.com';
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () => context.go(AppRoutes.adminCrearEvento),
+              backgroundColor: AppTheme.goldColor,
+              foregroundColor: AppTheme.darkBg,
+              icon: const Icon(Icons.add),
+              label: const Text('Nuevo evento',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+            )
+          : null,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
