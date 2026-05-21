@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pgh_app/core/providers/auth_provider.dart';
 import 'package:pgh_app/core/theme.dart';
 
@@ -40,6 +41,11 @@ class EventoFormScreen extends ConsumerStatefulWidget {
 class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  // Admin
+  bool _isAdmin = false;
+  String? _entidadIdSeleccionada;
+  List<Map<String, dynamic>> _entidades = [];
+
   // Información básica
   final _nombreCtrl      = TextEditingController();
   final _descripcionCtrl = TextEditingController();
@@ -73,6 +79,25 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   final _coorgWebCtrl        = TextEditingController();
 
   bool _guardando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final email = Supabase.instance.client.auth.currentUser?.email ?? '';
+    _isAdmin = email == 'mgalan26@gmail.com';
+    if (_isAdmin) _cargarEntidades();
+  }
+
+  Future<void> _cargarEntidades() async {
+    final data = await Supabase.instance.client
+        .from('entidades')
+        .select('id, nombre')
+        .eq('activa', true)
+        .order('nombre');
+    setState(() {
+      _entidades = List<Map<String, dynamic>>.from(data as List);
+    });
+  }
 
   @override
   void dispose() {
@@ -155,19 +180,25 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
       _snack('Selecciona al menos una modalidad');
       return;
     }
+    if (_isAdmin && _entidadIdSeleccionada == null) {
+      _snack('Selecciona una entidad');
+      return;
+    }
 
-    final org = await ref.read(organizadorProvider.future);
-    if (org == null) {
+    final org = _isAdmin ? null : await ref.read(organizadorProvider.future);
+    if (!_isAdmin && org == null) {
       _snack('No se encontró el perfil de organizador');
       return;
     }
+
+    final estadoFinal = _isAdmin ? 'publicado' : estado;
 
     setState(() => _guardando = true);
     try {
       final supabase = ref.read(supabaseProvider);
       final payload = {
-        'organizador_id':      org.id,
-        'entidad_id':          org.entidadId,
+        'organizador_id':      _isAdmin ? null : org!.id,
+        'entidad_id':          _isAdmin ? _entidadIdSeleccionada : org!.entidadId,
         'nombre':              _nombreCtrl.text.trim(),
         'tipo':                _tipo,
         'descripcion':         _descripcionCtrl.text.trim().isEmpty
@@ -214,7 +245,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
         'portada_url':         _portadaUrlCtrl.text.trim().isEmpty
                                  ? null
                                  : _portadaUrlCtrl.text.trim(),
-        'estado':              estado,
+        'estado':              estadoFinal,
         'visitas':             0,
       };
 
@@ -229,9 +260,11 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
 
       if (mounted) {
         _snack(
-          estado == 'pendiente'
-            ? 'Evento enviado para revisión ✓'
-            : 'Borrador guardado ✓',
+          estadoFinal == 'publicado'
+            ? 'Evento publicado ✓'
+            : estadoFinal == 'pendiente'
+              ? 'Evento enviado para revisión ✓'
+              : 'Borrador guardado ✓',
           isError: false,
         );
         context.pop();
@@ -271,6 +304,34 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+
+            if (_isAdmin)
+              _seccion('Entidad organizadora', [
+                _entidades.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: CircularProgressIndicator(
+                              color: AppTheme.goldColor, strokeWidth: 2),
+                        ))
+                    : DropdownButtonFormField<String>(
+                        value: _entidadIdSeleccionada,
+                        decoration: const InputDecoration(
+                            labelText: 'Entidad *'),
+                        dropdownColor: AppTheme.darkCard,
+                        style: const TextStyle(color: AppTheme.textPrimary),
+                        isExpanded: true,
+                        items: _entidades.map((e) => DropdownMenuItem(
+                          value: e['id'] as String,
+                          child: Text(e['nombre'] as String),
+                        )).toList(),
+                        onChanged: (v) =>
+                            setState(() => _entidadIdSeleccionada = v),
+                        validator: (v) =>
+                            v == null ? 'Selecciona una entidad' : null,
+                      ),
+              ]),
+
             _seccion('Información básica', [
               _campo(
                 controller: _nombreCtrl,
@@ -450,7 +511,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
 
             const SizedBox(height: 24),
 
-            // Botón principal: enviar para revisión
+            // Botón principal
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -460,7 +521,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
                         height: 20, width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2, color: AppTheme.darkBg))
-                    : const Text('Enviar para revisión'),
+                    : Text(_isAdmin ? 'Publicar evento' : 'Enviar para revisión'),
               ),
             ),
 
