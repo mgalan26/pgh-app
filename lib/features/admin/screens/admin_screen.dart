@@ -23,11 +23,18 @@ class AdminScreen extends ConsumerWidget {
             final tab = tabController.index;
 
             // Botón "+" que cambia según el tab activo
-            final (label, icon, onTap) = switch (tab) {
-              0 => ('Nuevo evento',  Icons.add, () => AdminTabEventos.abrirNuevoEvento(context, ref)),
-              1 => ('Nuevo ponente', Icons.add, () => AdminTabPonentes.abrirForm(context, ref, ponente: null)),
-              _ => ('Nueva entidad', Icons.add, () => AdminTabEntidades.abrirAltaOrganizador(context, ref)),
-            };
+            String label;
+            VoidCallback onTap;
+            if (tab == 0) {
+              label = 'Nuevo evento';
+              onTap = () => AdminTabEventos.abrirNuevoEvento(context, ref);
+            } else if (tab == 1) {
+              label = 'Nuevo ponente';
+              onTap = () => AdminTabPonentes.abrirForm(context, ref, ponente: null);
+            } else {
+              label = 'Nueva entidad';
+              onTap = () => AdminTabEntidades.abrirAltaOrganizador(context, ref);
+            }
 
             return Scaffold(
               backgroundColor: AppTheme.darkBg,
@@ -57,7 +64,7 @@ class AdminScreen extends ConsumerWidget {
                 actions: [
                   TextButton.icon(
                     onPressed: onTap,
-                    icon: Icon(icon, size: 16),
+                    icon: const Icon(Icons.add, size: 16),
                     label: Text(label, style: const TextStyle(fontSize: 13)),
                     style: TextButton.styleFrom(foregroundColor: AppTheme.goldColor),
                   ),
