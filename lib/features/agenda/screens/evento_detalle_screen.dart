@@ -444,6 +444,22 @@ class _EventoDetalleBody extends StatelessWidget {
                   ),
               ]),
             ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _abrirUrl(_googleCalendarUrl()),
+              icon: const Icon(Icons.calendar_month_outlined, size: 16),
+              label: const Text('Añadir a Google Calendar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF888888),
+                side: const BorderSide(color: Color(0xFF333333)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -595,6 +611,50 @@ class _EventoDetalleBody extends StatelessWidget {
   void _abrirUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
+  String _googleCalendarUrl() {
+    String formatDt(DateTime date, String? hora) {
+      final y  = date.year.toString().padLeft(4, '0');
+      final mo = date.month.toString().padLeft(2, '0');
+      final d  = date.day.toString().padLeft(2, '0');
+      if (hora == null) return '${y}${mo}${d}T000000';
+      final p  = hora.split(':');
+      final h  = p[0].padLeft(2, '0');
+      final mi = (p.length > 1 ? p[1] : '00').padLeft(2, '0');
+      return '${y}${mo}${d}T${h}${mi}00';
+    }
+
+    final start = formatDt(evento.fechaInicio, evento.horaInicio);
+
+    String end;
+    if (evento.horaFin != null) {
+      end = formatDt(evento.fechaFin ?? evento.fechaInicio, evento.horaFin);
+    } else if (evento.horaInicio != null) {
+      final p = evento.horaInicio!.split(':');
+      final h  = int.parse(p[0]);
+      final mi = p.length > 1 ? int.parse(p[1]) : 0;
+      final endDt = DateTime(evento.fechaInicio.year, evento.fechaInicio.month,
+              evento.fechaInicio.day, h, mi)
+          .add(const Duration(hours: 2));
+      end = formatDt(endDt,
+          '${endDt.hour.toString().padLeft(2, '0')}:${endDt.minute.toString().padLeft(2, '0')}');
+    } else {
+      end = formatDt(evento.fechaFin ?? evento.fechaInicio, null);
+    }
+
+    final locationParts = <String>[];
+    if (evento.venueNombre.isNotEmpty) locationParts.add(evento.venueNombre);
+    locationParts.add('${evento.ciudad}, ${evento.pais}');
+
+    final uri = Uri.https('calendar.google.com', '/calendar/render', {
+      'action':   'TEMPLATE',
+      'text':     evento.nombre,
+      'dates':    '$start/$end',
+      if (evento.descripcion?.isNotEmpty == true) 'details': evento.descripcion!,
+      'location': locationParts.join(', '),
+    });
+    return uri.toString();
   }
 
   Widget _buildDivider() => const Divider(
