@@ -13,7 +13,11 @@ final tabEventosProvider =
       .select(
           'id, nombre, descripcion, fecha_inicio, hora_inicio, '
           'ciudad, pais, estado, tipo, ponente_id, organizador_id, '
-          'nota_moderacion, '
+          'nota_moderacion, entidad_id, '
+          'tiene_presencial, tiene_streaming, url_online, '
+          'venue_nombre_libre, es_gratuito, url_reserva, '
+          'portada_url, email_contacto, enlace_web, '
+          'coorganizador_nombre, coorganizador_web, '
           'organizadores(nombre, apellido, entidades(nombre)), '
           'ponentes(id, nombre, apellido, cargo)')
       .order('fecha_inicio', ascending: false);
@@ -409,7 +413,7 @@ class _EventoEditSheet extends StatefulWidget {
 }
 
 class _EventoEditSheetState extends State<_EventoEditSheet> {
-  final _formKey        = GlobalKey<FormState>();
+  final _formKey             = GlobalKey<FormState>();
   late final _nombreCtrl      = TextEditingController(
       text: widget.evento['nombre'] as String?);
   late final _descripcionCtrl = TextEditingController(
@@ -422,11 +426,28 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
       text: widget.evento['enlace_web'] as String?);
   late final _notaCtrl        = TextEditingController(
       text: widget.evento['nota_moderacion'] as String?);
+  late final _venueNombreCtrl = TextEditingController(
+      text: widget.evento['venue_nombre_libre'] as String?);
+  late final _urlOnlineCtrl   = TextEditingController(
+      text: widget.evento['url_online'] as String?);
+  late final _urlReservaCtrl  = TextEditingController(
+      text: widget.evento['url_reserva'] as String?);
+  late final _portadaUrlCtrl  = TextEditingController(
+      text: widget.evento['portada_url'] as String?);
+  late final _coorgNombreCtrl = TextEditingController(
+      text: widget.evento['coorganizador_nombre'] as String?);
+  late final _coorgWebCtrl    = TextEditingController(
+      text: widget.evento['coorganizador_web'] as String?);
 
-  late String? _tipo   = widget.evento['tipo']   as String?;
-  late String? _estado = widget.evento['estado'] as String?;
-  late String? _pais   = widget.evento['pais']   as String?;
-  late String? _ponenteId = widget.evento['ponente_id'] as String?;
+  late String? _tipo       = widget.evento['tipo']   as String?;
+  late String? _estado     = widget.evento['estado'] as String?;
+  late String? _pais       = widget.evento['pais']   as String?;
+  late String? _ponenteId  = widget.evento['ponente_id'] as String?;
+  late String? _entidadId  = widget.evento['entidad_id'] as String?;
+  late bool _tienePresencial = (widget.evento['tiene_presencial'] as bool?) ?? true;
+  late bool _tieneStreaming  = (widget.evento['tiene_streaming']  as bool?) ?? false;
+  late bool _esGratuito      = (widget.evento['es_gratuito']      as bool?) ?? true;
+
   late DateTime? _fechaInicio = () {
     try {
       return widget.evento['fecha_inicio'] != null
@@ -439,21 +460,30 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
   bool _guardando = false;
 
   List<Map<String, dynamic>>? _ponentes;
+  List<Map<String, dynamic>>? _entidades;
 
   @override
   void initState() {
     super.initState();
-    _cargarPonentes();
+    _cargarDatos();
   }
 
-  Future<void> _cargarPonentes() async {
-    final data = await Supabase.instance.client
-        .from('ponentes')
-        .select('id, nombre, apellido, cargo')
-        .order('apellido', ascending: true);
+  Future<void> _cargarDatos() async {
+    final sb = Supabase.instance.client;
+    final results = await Future.wait([
+      sb.from('ponentes')
+          .select('id, nombre, apellido, cargo')
+          .order('apellido', ascending: true),
+      sb.from('entidades')
+          .select('id, nombre')
+          .eq('verificada', true)
+          .order('nombre', ascending: true),
+    ]);
     if (mounted) {
-      setState(() =>
-          _ponentes = List<Map<String, dynamic>>.from(data as List));
+      setState(() {
+        _ponentes  = List<Map<String, dynamic>>.from(results[0] as List);
+        _entidades = List<Map<String, dynamic>>.from(results[1] as List);
+      });
     }
   }
 
@@ -462,6 +492,8 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
     for (final c in [
       _nombreCtrl, _descripcionCtrl, _ciudadCtrl,
       _emailCtrl, _enlaceWebCtrl, _notaCtrl,
+      _venueNombreCtrl, _urlOnlineCtrl, _urlReservaCtrl,
+      _portadaUrlCtrl, _coorgNombreCtrl, _coorgWebCtrl,
     ]) { c.dispose(); }
     super.dispose();
   }
@@ -497,17 +529,27 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
     setState(() => _guardando = true);
     try {
       await Supabase.instance.client.from('eventos').update({
-        'nombre':          _nombreCtrl.text.trim(),
-        'descripcion':     _empty(_descripcionCtrl),
-        'ciudad':          _ciudadCtrl.text.trim(),
-        'pais':            _pais,
-        'tipo':            _tipo,
-        'estado':          _estado,
-        'fecha_inicio':    DateFormat('yyyy-MM-dd').format(_fechaInicio!),
-        'ponente_id':      _ponenteId,
-        'email_contacto':  _empty(_emailCtrl),
-        'enlace_web':      _empty(_enlaceWebCtrl),
-        'nota_moderacion': _empty(_notaCtrl),
+        'nombre':              _nombreCtrl.text.trim(),
+        'descripcion':         _empty(_descripcionCtrl),
+        'ciudad':              _ciudadCtrl.text.trim(),
+        'pais':                _pais,
+        'tipo':                _tipo,
+        'estado':              _estado,
+        'fecha_inicio':        DateFormat('yyyy-MM-dd').format(_fechaInicio!),
+        'ponente_id':          _ponenteId,
+        'entidad_id':          _entidadId,
+        'tiene_presencial':    _tienePresencial,
+        'tiene_streaming':     _tieneStreaming,
+        'url_online':          _empty(_urlOnlineCtrl),
+        'venue_nombre_libre':  _empty(_venueNombreCtrl),
+        'es_gratuito':         _esGratuito,
+        'url_reserva':         _empty(_urlReservaCtrl),
+        'portada_url':         _empty(_portadaUrlCtrl),
+        'email_contacto':      _empty(_emailCtrl),
+        'enlace_web':          _empty(_enlaceWebCtrl),
+        'coorganizador_nombre': _empty(_coorgNombreCtrl),
+        'coorganizador_web':   _empty(_coorgWebCtrl),
+        'nota_moderacion':     _empty(_notaCtrl),
       }).eq('id', widget.evento['id'] as String);
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -544,13 +586,18 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
                       fontSize: 16,
                       fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
+
+              // Nombre
               _tf(_nombreCtrl, 'Nombre *',
                   validator: (v) => v == null || v.trim().isEmpty
                       ? 'Obligatorio'
                       : null),
               const SizedBox(height: 10),
+
+              // Descripción
               _tf(_descripcionCtrl, 'Descripción', maxLines: 3),
               const SizedBox(height: 10),
+
               // Fecha
               OutlinedButton.icon(
                 onPressed: _pickFecha,
@@ -569,6 +616,8 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
                     : 'Fecha *'),
               ),
               const SizedBox(height: 10),
+
+              // Tipo
               DropdownButtonFormField<String>(
                 value: _tipo,
                 decoration: const InputDecoration(labelText: 'Tipo *'),
@@ -581,11 +630,15 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
                 validator: (v) => v == null ? 'Selecciona un tipo' : null,
               ),
               const SizedBox(height: 10),
+
+              // Ciudad
               _tf(_ciudadCtrl, 'Ciudad *',
                   validator: (v) => v == null || v.trim().isEmpty
                       ? 'Obligatorio'
                       : null),
               const SizedBox(height: 10),
+
+              // País
               DropdownButtonFormField<String>(
                 value: _pais,
                 decoration: const InputDecoration(labelText: 'País *'),
@@ -599,7 +652,67 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
                 validator: (v) => v == null ? 'Selecciona un país' : null,
               ),
               const SizedBox(height: 10),
-              // Ponente (carga dinámica)
+
+              // Venue
+              _tf(_venueNombreCtrl, 'Nombre del venue'),
+              const SizedBox(height: 10),
+
+              // Presencial / Streaming
+              _switchRow(
+                label: 'Presencial',
+                value: _tienePresencial,
+                onChanged: (v) => setState(() => _tienePresencial = v),
+              ),
+              _switchRow(
+                label: 'Con streaming',
+                value: _tieneStreaming,
+                onChanged: (v) => setState(() => _tieneStreaming = v),
+              ),
+              if (_tieneStreaming) ...[
+                const SizedBox(height: 6),
+                _tf(_urlOnlineCtrl, 'URL streaming / acceso online'),
+              ],
+              const SizedBox(height: 10),
+
+              // Gratuito / URL reserva
+              _switchRow(
+                label: 'Gratuito',
+                value: _esGratuito,
+                onChanged: (v) => setState(() => _esGratuito = v),
+              ),
+              if (!_esGratuito) ...[
+                const SizedBox(height: 6),
+                _tf(_urlReservaCtrl, 'URL de reserva / compra de entradas'),
+              ],
+              const SizedBox(height: 10),
+
+              // Portada URL
+              _tf(_portadaUrlCtrl, 'URL imagen de portada'),
+              const SizedBox(height: 10),
+
+              // Entidad organizadora
+              if (_entidades == null)
+                const LinearProgressIndicator()
+              else
+                DropdownButtonFormField<String>(
+                  value: _entidadId,
+                  decoration: const InputDecoration(labelText: 'Entidad organizadora'),
+                  dropdownColor: AppTheme.darkCard,
+                  style: const TextStyle(color: AppTheme.textPrimary),
+                  isExpanded: true,
+                  items: [
+                    const DropdownMenuItem(
+                        value: null, child: Text('— Sin asignar —')),
+                    ..._entidades!.map((e) => DropdownMenuItem(
+                          value: e['id'] as String,
+                          child: Text(e['nombre'] as String? ?? ''),
+                        )),
+                  ],
+                  onChanged: (v) => setState(() => _entidadId = v),
+                ),
+              const SizedBox(height: 10),
+
+              // Ponente
               if (_ponentes == null)
                 const LinearProgressIndicator()
               else
@@ -627,6 +740,8 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
                   onChanged: (v) => setState(() => _ponenteId = v),
                 ),
               const SizedBox(height: 10),
+
+              // Estado
               DropdownButtonFormField<String>(
                 value: _estado,
                 decoration: const InputDecoration(labelText: 'Estado'),
@@ -638,12 +753,23 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
                 onChanged: (v) => setState(() => _estado = v),
               ),
               const SizedBox(height: 10),
-              _tf(_emailCtrl, 'Email contacto'),
+
+              // Contacto / web
+              _tf(_emailCtrl, 'Email de contacto'),
               const SizedBox(height: 10),
               _tf(_enlaceWebCtrl, 'Web del evento'),
               const SizedBox(height: 10),
+
+              // Coorganizador
+              _tf(_coorgNombreCtrl, 'Coorganizador — nombre'),
+              const SizedBox(height: 10),
+              _tf(_coorgWebCtrl, 'Coorganizador — web'),
+              const SizedBox(height: 10),
+
+              // Nota moderación
               _tf(_notaCtrl, 'Nota de moderación', maxLines: 2),
               const SizedBox(height: 20),
+
               ElevatedButton(
                 onPressed: _guardando ? null : _guardar,
                 child: _guardando
@@ -673,6 +799,25 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
         style: const TextStyle(color: AppTheme.textPrimary),
         decoration: InputDecoration(labelText: label),
         validator: validator,
+      );
+
+  Widget _switchRow({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) =>
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label,
+              style: const TextStyle(
+                  color: AppTheme.textSecondary, fontSize: 14)),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: AppTheme.goldColor,
+          ),
+        ],
       );
 }
 
