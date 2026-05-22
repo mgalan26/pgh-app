@@ -43,6 +43,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   bool? _filtroGratuito;
   bool? _filtroPresencial;
   String? _filtroEntidad;
+  String? _filtroPonente;
 
   List<Evento> _filtrar(List<Evento> eventos) {
     return eventos.where((e) {
@@ -52,6 +53,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       if (_filtroPresencial == true && !e.tienePresencial) return false;
       if (_filtroPresencial == false && !e.tieneStreaming) return false;
       if (_filtroEntidad != null && e.entidadNombre != _filtroEntidad) return false;
+      if (_filtroPonente != null && e.ponente?.nombreCompleto != _filtroPonente) return false;
       return true;
     }).toList();
   }
@@ -59,12 +61,12 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   bool get _hayFiltrosActivos =>
       _filtroPais != null || _filtroTipo != null ||
       _filtroGratuito != null || _filtroPresencial != null ||
-      _filtroEntidad != null;
+      _filtroEntidad != null || _filtroPonente != null;
 
   void _limpiarFiltros() => setState(() {
     _filtroPais = null; _filtroTipo = null;
     _filtroGratuito = null; _filtroPresencial = null;
-    _filtroEntidad = null;
+    _filtroEntidad = null; _filtroPonente = null;
   });
 
   @override
@@ -202,6 +204,15 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
                     .where((n) => n.isNotEmpty)
                     .toSet().toList()..sort(),
                 onSelected: (v) => setState(() => _filtroEntidad = v),
+              ),
+              _FiltroChip(
+                label: 'Ponente',
+                value: _filtroPonente,
+                opciones: todos
+                    .where((e) => e.ponente != null)
+                    .map((e) => e.ponente!.nombreCompleto)
+                    .toSet().toList()..sort(),
+                onSelected: (v) => setState(() => _filtroPonente = v),
               ),
             ],
           ),
