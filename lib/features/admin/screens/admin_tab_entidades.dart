@@ -167,7 +167,7 @@ class _EntidadCardState extends State<_EntidadCard> {
                     _accion('Editar', Icons.edit_outlined, AppTheme.goldColor,
                         () => _abrirEdicion(context)),
                     _accion('Eliminar', Icons.delete_outline, Colors.redAccent,
-                        () => _confirmarEliminar(context)),
+                        () => _confirmarEliminar()),
                   ]),
                 ],
               ),
@@ -238,41 +238,43 @@ class _EntidadCardState extends State<_EntidadCard> {
     widget.onRefresh();
   }
 
-  Future<void> _confirmarEliminar(BuildContext context) async {
-    final ok = await showDialog<bool>(
+  Future<void> _confirmarEliminar() async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161616),
         title: const Text('Eliminar entidad',
-            style: TextStyle(color: AppTheme.textPrimary)),
-        content: Text(
-          '¿Eliminar "${widget.entidad['nombre']}"? Se eliminarán también sus organizadores.',
-          style: const TextStyle(color: AppTheme.textSecondary),
-        ),
+            style: TextStyle(color: Color(0xFFF0E8D8))),
+        content: const Text('¿Seguro que quieres eliminar esta entidad?',
+            style: TextStyle(color: Color(0xFF888888))),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancelar')),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(ctx, true),
               style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
               child: const Text('Eliminar')),
         ],
       ),
     );
-    if (ok != true) return;
+    if (confirmed != true) return;
+    if (!mounted) return;
     try {
       await Supabase.instance.client
           .from('entidades')
           .delete()
           .eq('id', widget.entidad['id'] as String);
-      widget.onRefresh();
+      if (mounted) widget.onRefresh();
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error al eliminar: $e'),
-          backgroundColor: Colors.redAccent,
-        ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 6),
+          ),
+        );
       }
     }
   }

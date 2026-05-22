@@ -146,40 +146,42 @@ class _PonenteTile extends StatelessWidget {
   }
 
   Future<void> _confirmarBorrar(BuildContext context) async {
-    final ok = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161616),
         title: const Text('Eliminar ponente',
-            style: TextStyle(color: AppTheme.textPrimary)),
-        content: Text(
-          '¿Eliminar a ${ponente.nombreCompleto}?',
-          style: const TextStyle(color: AppTheme.textSecondary),
-        ),
+            style: TextStyle(color: Color(0xFFF0E8D8))),
+        content: const Text('¿Seguro que quieres eliminar este ponente?',
+            style: TextStyle(color: Color(0xFF888888))),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancelar')),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(ctx, true),
               style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
               child: const Text('Eliminar')),
         ],
       ),
     );
-    if (ok != true) return;
+    if (confirmed != true) return;
+    if (!context.mounted) return;
     try {
       await Supabase.instance.client
           .from('ponentes')
           .delete()
           .eq('id', ponente.id);
-      onRefresh();
+      if (context.mounted) onRefresh();
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error al eliminar: $e'),
-          backgroundColor: Colors.redAccent,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 6),
+          ),
+        );
       }
     }
   }
