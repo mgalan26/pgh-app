@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pgh_app/core/theme.dart';
@@ -457,7 +458,8 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
       return null;
     }
   }();
-  bool _guardando = false;
+  bool _guardando       = false;
+  bool _subiendoPortada = false;
 
   List<Map<String, dynamic>>? _ponentes;
   List<Map<String, dynamic>>? _entidades;
@@ -515,6 +517,44 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
       ),
     );
     if (picked != null) setState(() => _fechaInicio = picked);
+  }
+
+  Future<void> _subirImagenPortada() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+    setState(() => _subiendoPortada = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final path = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await Supabase.instance.client.storage
+          .from('portadas')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true,
+            ),
+          );
+      final url = Supabase.instance.client.storage
+          .from('portadas')
+          .getPublicUrl(path);
+      if (mounted) setState(() => _portadaUrlCtrl.text = url);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al subir imagen: $e'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _subiendoPortada = false);
+    }
   }
 
   Future<void> _guardar() async {
@@ -687,7 +727,35 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
               const SizedBox(height: 10),
 
               // Portada URL
-              _tf(_portadaUrlCtrl, 'URL imagen de portada'),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(child: _tf(_portadaUrlCtrl, 'URL imagen de portada')),
+                  const SizedBox(width: 8),
+                  _subiendoPortada
+                      ? const SizedBox(
+                          width: 44, height: 44,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppTheme.goldColor),
+                          ))
+                      : OutlinedButton.icon(
+                          onPressed: _subirImagenPortada,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.goldColor,
+                            side: BorderSide(
+                                color: AppTheme.goldColor.withAlpha(120)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 13),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          icon: const Icon(Icons.upload_outlined, size: 16),
+                          label: const Text('Subir imagen',
+                              style: TextStyle(fontSize: 12)),
+                        ),
+                ],
+              ),
               const SizedBox(height: 10),
 
               // Entidad organizadora
