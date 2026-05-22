@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -85,12 +88,28 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   bool _guardando   = false;
   bool _analizando  = false;
 
+  // Drag-and-drop / paste
+  bool _draggingOver = false;
+  int  _dragCounter  = 0;
+  StreamSubscription<html.Event>?      _pasteSub;
+  StreamSubscription<html.MouseEvent>? _dragEnterSub;
+  StreamSubscription<html.MouseEvent>? _dragLeaveSub;
+  StreamSubscription<html.MouseEvent>? _dragOverSub;
+  StreamSubscription<html.MouseEvent>? _dropSub;
+
   @override
   void initState() {
     super.initState();
     final email = Supabase.instance.client.auth.currentUser?.email ?? '';
     _isAdmin = email == 'mgalan26@gmail.com';
     if (_isAdmin) _cargarEntidades();
+
+    // Listeners web: paste y drag-and-drop
+    _pasteSub     = html.document.onPaste.listen(_onPaste);
+    _dragEnterSub = html.window.onDragEnter.listen(_onDragEnter);
+    _dragLeaveSub = html.window.onDragLeave.listen(_onDragLeave);
+    _dragOverSub  = html.window.onDragOver.listen((e) => e.preventDefault());
+    _dropSub      = html.window.onDrop.listen(_onDrop);
   }
 
   Future<void> _cargarEntidades() async {
@@ -111,7 +130,70 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
       _urlOnlineCtrl, _urlReservaCtrl, _emailContactoCtrl, _enlaceWebCtrl,
       _coorgNombreCtrl, _coorgWebCtrl,
     ]) { c.dispose(); }
+    _pasteSub?.cancel();
+    _dragEnterSub?.cancel();
+    _dragLeaveSub?.cancel();
+    _dragOverSub?.cancel();
+    _dropSub?.cancel();
     super.dispose();
+  }
+
+  // ── Handlers web: paste y drag-and-drop ───────────────────────────────────
+
+  void _onPaste(html.Event rawEvent) {
+    final event = rawEvent as html.ClipboardEvent;
+    final items = event.clipboardData?.items;
+    if (items == null) return;
+    for (int i = 0; i < (items.length ?? 0); i++) {
+      final item = items[i];
+      if (item != null && (item.type?.startsWith('image/') ?? false)) {
+        final file = item.getAsFile();
+        if (file != null) {
+          event.preventDefault();
+          _procesarBlobWeb(file, item.type ?? 'image/jpeg');
+          return;
+        }
+      }
+    }
+  }
+
+  void _onDragEnter(html.MouseEvent event) {
+    _dragCounter++;
+    if (mounted && _dragCounter == 1) setState(() => _draggingOver = true);
+  }
+
+  void _onDragLeave(html.MouseEvent event) {
+    if (_dragCounter > 0) _dragCounter--;
+    if (mounted && _dragCounter == 0) setState(() => _draggingOver = false);
+  }
+
+  void _onDrop(html.MouseEvent event) {
+    event.preventDefault();
+    _dragCounter = 0;
+    if (mounted) setState(() => _draggingOver = false);
+    final files = event.dataTransfer?.files;
+    if (files == null || files.isEmpty) return;
+    final file = files[0];
+    if (file.type.startsWith('image/')) {
+      _procesarBlobWeb(file, file.type);
+    }
+  }
+
+  Future<void> _procesarBlobWeb(html.Blob blob, String mediaType) async {
+    if (_analizando) return;
+    setState(() => _analizando = true);
+    try {
+      final reader = html.FileReader();
+      reader.readAsDataUrl(blob);
+      await reader.onLoad.first;
+      final dataUrl = reader.result as String;
+      final base64Image = dataUrl.split(',').last;
+      await _llamarClaudeConBase64(base64Image, mediaType: mediaType);
+    } catch (e) {
+      if (mounted) _snack('Error al procesar la imagen: $e');
+    } finally {
+      if (mounted) setState(() => _analizando = false);
+    }
   }
 
   // ── Helpers de fecha/hora ─────────────────────────────────────────────────
@@ -218,33 +300,43 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
     setState(() => _analizando = true);
     try {
       final bytes = await picked.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      await _llamarClaudeConBase64(base64Encode(bytes));
+    } catch (e) {
+      if (mounted) _snack('Error al analizar la imagen: $e');
+    } finally {
+      if (mounted) setState(() => _analizando = false);
+    }
+  }
 
-      final response = await http.post(
-        Uri.parse('https://api.anthropic.com/v1/messages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': Env.anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: jsonEncode({
-          'model': 'claude-opus-4-5',
-          'max_tokens': 1024,
-          'messages': [
-            {
-              'role': 'user',
-              'content': [
-                {
-                  'type': 'image',
-                  'source': {
-                    'type': 'base64',
-                    'media_type': 'image/jpeg',
-                    'data': base64Image,
-                  },
+  Future<void> _llamarClaudeConBase64(
+    String base64Image, {
+    String mediaType = 'image/jpeg',
+  }) async {
+    final response = await http.post(
+      Uri.parse('https://api.anthropic.com/v1/messages'),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': Env.anthropicApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: jsonEncode({
+        'model': 'claude-opus-4-5',
+        'max_tokens': 1024,
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {
+                'type': 'image',
+                'source': {
+                  'type': 'base64',
+                  'media_type': mediaType,
+                  'data': base64Image,
                 },
-                {
-                  'type': 'text',
-                  'text': '''Extrae los datos de este evento y devuelve SOLO un JSON válido sin markdown con estos campos:
+              },
+              {
+                'type': 'text',
+                'text': '''Extrae los datos de este evento y devuelve SOLO un JSON válido sin markdown con estos campos:
 {
   "nombre": "nombre del evento",
   "descripcion": "descripción si existe",
@@ -259,79 +351,71 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   "ponente_nombre": "nombre completo del ponente principal si existe"
 }
 Si algún campo no está en la imagen ponlo como null.'''
-                }
-              ]
-            }
-          ]
-        }),
-      );
+              }
+            ]
+          }
+        ]
+      }),
+    );
 
-      if (response.statusCode != 200) {
-        throw Exception('Error de API: ${response.statusCode}');
+    if (response.statusCode != 200) {
+      throw Exception('Error de API: ${response.statusCode}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final content = (body['content'] as List).first as Map<String, dynamic>;
+    final text = content['text'] as String;
+
+    final jsonStr = text
+        .replaceAll(RegExp(r'```json\s*'), '')
+        .replaceAll(RegExp(r'```\s*'), '')
+        .trim();
+
+    final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+
+    setState(() {
+      if (data['nombre'] != null) {
+        _nombreCtrl.text = data['nombre'] as String;
       }
-
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      final content = (body['content'] as List).first as Map<String, dynamic>;
-      final text = content['text'] as String;
-
-      // Elimina posibles bloques markdown ```json ... ```
-      final jsonStr = text
-          .replaceAll(RegExp(r'```json\s*'), '')
-          .replaceAll(RegExp(r'```\s*'), '')
-          .trim();
-
-      final data = jsonDecode(jsonStr) as Map<String, dynamic>;
-
-      setState(() {
-        if (data['nombre'] != null) {
-          _nombreCtrl.text = data['nombre'] as String;
-        }
-        if (data['descripcion'] != null) {
-          _descripcionCtrl.text = data['descripcion'] as String;
-        }
-        if (data['tipo'] != null && _tiposEvento.contains(data['tipo'])) {
-          _tipo = data['tipo'] as String;
-        }
-        if (data['fecha_inicio'] != null) {
-          try {
-            _fechaInicio = DateTime.parse(data['fecha_inicio'] as String);
-          } catch (_) {}
-        }
-        if (data['hora_inicio'] != null) {
-          try {
-            final parts = (data['hora_inicio'] as String).split(':');
-            _horaInicio = TimeOfDay(
-              hour: int.parse(parts[0]),
-              minute: int.parse(parts[1]),
-            );
-          } catch (_) {}
-        }
-        if (data['pais'] != null && _paises.contains(data['pais'])) {
-          _pais = data['pais'] as String;
-        }
-        if (data['ciudad'] != null) {
-          _ciudadCtrl.text = data['ciudad'] as String;
-        }
-        if (data['venue_nombre'] != null) {
-          _venueNombreCtrl.text = data['venue_nombre'] as String;
-        }
-        if (data['es_gratuito'] != null) {
-          _esGratuito = data['es_gratuito'] as bool;
-        }
-        if (data['enlace_web'] != null) {
-          _enlaceWebCtrl.text = data['enlace_web'] as String;
-        }
-      });
-
-      if (mounted) {
-        _snack('Campos rellenados desde la imagen ✓', isError: false);
+      if (data['descripcion'] != null) {
+        _descripcionCtrl.text = data['descripcion'] as String;
       }
-    } catch (e) {
-      if (mounted) {
-        _snack('Error al analizar la imagen: $e');
+      if (data['tipo'] != null && _tiposEvento.contains(data['tipo'])) {
+        _tipo = data['tipo'] as String;
       }
-    } finally {
-      if (mounted) setState(() => _analizando = false);
+      if (data['fecha_inicio'] != null) {
+        try {
+          _fechaInicio = DateTime.parse(data['fecha_inicio'] as String);
+        } catch (_) {}
+      }
+      if (data['hora_inicio'] != null) {
+        try {
+          final parts = (data['hora_inicio'] as String).split(':');
+          _horaInicio = TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
+        } catch (_) {}
+      }
+      if (data['pais'] != null && _paises.contains(data['pais'])) {
+        _pais = data['pais'] as String;
+      }
+      if (data['ciudad'] != null) {
+        _ciudadCtrl.text = data['ciudad'] as String;
+      }
+      if (data['venue_nombre'] != null) {
+        _venueNombreCtrl.text = data['venue_nombre'] as String;
+      }
+      if (data['es_gratuito'] != null) {
+        _esGratuito = data['es_gratuito'] as bool;
+      }
+      if (data['enlace_web'] != null) {
+        _enlaceWebCtrl.text = data['enlace_web'] as String;
+      }
+    });
+
+    if (mounted) {
+      _snack('Campos rellenados desde la imagen ✓', isError: false);
     }
   }
 
@@ -472,15 +556,14 @@ Si algún campo no está en la imagen ponlo como null.'''
           padding: const EdgeInsets.all(16),
           children: [
 
-            // Botón rellenar desde imagen
+            // ── Botón rellenar desde imagen ─────────────────────────────
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: _analizando ? null : _rellenarDesdeImagen,
                 icon: _analizando
                     ? const SizedBox(
-                        height: 16,
-                        width: 16,
+                        height: 16, width: 16,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: AppTheme.goldColor))
                     : const Icon(Icons.camera_alt_outlined,
@@ -496,6 +579,52 @@ Si algún campo no está en la imagen ponlo como null.'''
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
                 ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Zona drag-and-drop / Ctrl+V ─────────────────────────────
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              decoration: BoxDecoration(
+                color: _draggingOver
+                    ? AppTheme.goldColor.withAlpha(18)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _draggingOver
+                      ? AppTheme.goldColor
+                      : AppTheme.darkBorder,
+                  width: _draggingOver ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _draggingOver
+                        ? Icons.file_download_outlined
+                        : Icons.upload_file_outlined,
+                    color: _draggingOver
+                        ? AppTheme.goldColor
+                        : AppTheme.textMuted,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _draggingOver
+                        ? 'Suelta la imagen aquí'
+                        : 'Arrastra una imagen aquí  ·  Ctrl+V para pegar',
+                    style: TextStyle(
+                      color: _draggingOver
+                          ? AppTheme.goldColor
+                          : AppTheme.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
 
