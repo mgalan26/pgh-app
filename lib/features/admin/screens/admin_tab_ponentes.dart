@@ -168,11 +168,20 @@ class _PonenteTile extends StatelessWidget {
       ),
     );
     if (ok != true) return;
-    await Supabase.instance.client
-        .from('ponentes')
-        .delete()
-        .eq('id', ponente.id);
-    onRefresh();
+    try {
+      await Supabase.instance.client
+          .from('ponentes')
+          .delete()
+          .eq('id', ponente.id);
+      onRefresh();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al eliminar: $e'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
   }
 }
 

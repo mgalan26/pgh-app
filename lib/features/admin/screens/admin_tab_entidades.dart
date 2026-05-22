@@ -261,11 +261,20 @@ class _EntidadCardState extends State<_EntidadCard> {
       ),
     );
     if (ok != true) return;
-    await Supabase.instance.client
-        .from('entidades')
-        .delete()
-        .eq('id', widget.entidad['id'] as String);
-    widget.onRefresh();
+    try {
+      await Supabase.instance.client
+          .from('entidades')
+          .delete()
+          .eq('id', widget.entidad['id'] as String);
+      widget.onRefresh();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al eliminar: $e'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
   }
 
   Future<void> _abrirAltaOrgEnEntidad(BuildContext context) async {

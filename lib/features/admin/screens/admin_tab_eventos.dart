@@ -348,11 +348,20 @@ class _EventoCardState extends State<_EventoCard> {
       ),
     );
     if (ok != true) return;
-    await Supabase.instance.client
-        .from('eventos')
-        .delete()
-        .eq('id', widget.evento['id'] as String);
-    widget.onRefresh();
+    try {
+      await Supabase.instance.client
+          .from('eventos')
+          .delete()
+          .eq('id', widget.evento['id'] as String);
+      widget.onRefresh();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error al eliminar: $e'),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    }
   }
 
   Future<void> _cambiarEstado(String nuevoEstado) async {
