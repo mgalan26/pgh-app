@@ -297,6 +297,7 @@ class _EventoCard extends StatelessWidget {
         child: IntrinsicHeight(
           child: Row(
             children: [
+              _buildPortada(),
               _buildFecha(),
               Expanded(child: _buildContenido()),
               const Padding(
@@ -311,33 +312,71 @@ class _EventoCard extends StatelessWidget {
     );
   }
 
+  Widget _buildPortada() {
+    final color = _tipoColors[evento.tipo] ?? const Color(0xFF7F8C8D);
+    final url = evento.portadaUrl;
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(8),
+        bottomLeft: Radius.circular(8),
+      ),
+      child: SizedBox(
+        width: 100,
+        child: url != null && url.isNotEmpty
+            ? Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildPortadaPlaceholder(color),
+              )
+            : _buildPortadaPlaceholder(color),
+      ),
+    );
+  }
+
+  Widget _buildPortadaPlaceholder(Color color) {
+    final inicial = (_tipoLabels[evento.tipo] ?? 'E')[0];
+    return Container(
+      color: color.withAlpha(40),
+      child: Center(
+        child: Text(
+          inicial,
+          style: TextStyle(
+            color: color.withAlpha(180),
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFecha() {
     final dia = DateFormat('dd').format(evento.fechaInicio);
     final mes = DateFormat('MMM', 'es').format(evento.fechaInicio).toUpperCase();
     final anio = DateFormat('yyyy').format(evento.fechaInicio);
     return Container(
-      width: 64,
+      width: 56,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: const BoxDecoration(
         color: Color(0xFF161616),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(8),
-          bottomLeft: Radius.circular(8)),
-        border: Border(right: BorderSide(color: Color(0xFF1E1E1E))),
+        border: Border(
+          left: BorderSide(color: Color(0xFF1E1E1E)),
+          right: BorderSide(color: Color(0xFF1E1E1E)),
+        ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(dia,
             style: const TextStyle(
-              color: Color(0xFFC9A84C), fontSize: 22,
+              color: Color(0xFFC9A84C), fontSize: 20,
               fontWeight: FontWeight.bold, height: 1)),
           const SizedBox(height: 2),
           Text(mes,
             style: const TextStyle(
-              color: Color(0xFF666666), fontSize: 10, letterSpacing: 1)),
+              color: Color(0xFF666666), fontSize: 9, letterSpacing: 1)),
           Text(anio,
-            style: const TextStyle(color: Color(0xFF444444), fontSize: 10)),
+            style: const TextStyle(color: Color(0xFF444444), fontSize: 9)),
         ],
       ),
     );
@@ -370,10 +409,13 @@ class _EventoCard extends StatelessWidget {
             const Icon(Icons.location_on_outlined,
               color: Color(0xFF666666), size: 12),
             const SizedBox(width: 3),
-            Text('${evento.ciudad}, ${evento.pais}',
-              style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
+            Flexible(
+              child: Text('${evento.ciudad}, ${evento.pais}',
+                style: const TextStyle(color: Color(0xFF888888), fontSize: 11),
+                overflow: TextOverflow.ellipsis),
+            ),
             if (evento.horaInicio != null) ...[
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               const Icon(Icons.access_time,
                 color: Color(0xFF666666), size: 12),
               const SizedBox(width: 3),
@@ -382,20 +424,26 @@ class _EventoCard extends StatelessWidget {
             ],
           ]),
           if (evento.ponente != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Row(children: [
-              const Icon(Icons.person_outline,
-                color: Color(0xFF888888), size: 12),
-              const SizedBox(width: 3),
-              Text(evento.ponente!.nombreCompleto,
-                style: const TextStyle(color: Color(0xFF888888), fontSize: 11)),
-              if (evento.ponente!.cargo != null) ...[
-                const Text(' · ',
-                  style: TextStyle(color: Color(0xFF444444), fontSize: 11)),
-                Flexible(child: Text(evento.ponente!.cargo!,
-                  style: const TextStyle(color: Color(0xFF666666), fontSize: 10),
-                  overflow: TextOverflow.ellipsis)),
-              ],
+              _PonteAvatar(ponente: evento.ponente!),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(evento.ponente!.nombreCompleto,
+                      style: const TextStyle(
+                        color: Color(0xFF999999), fontSize: 11),
+                      overflow: TextOverflow.ellipsis),
+                    if (evento.ponente!.cargo != null)
+                      Text(evento.ponente!.cargo!,
+                        style: const TextStyle(
+                          color: Color(0xFF666666), fontSize: 10),
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
             ]),
           ],
           if (evento.entidadNombre != null) ...[
@@ -414,6 +462,47 @@ class _EventoCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Avatar ponente ───────────────────────────────────────────────────────────
+
+class _PonteAvatar extends StatelessWidget {
+  final Ponente ponente;
+  const _PonteAvatar({required this.ponente});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = ponente.fotoUrl;
+    final inicial = ponente.nombre.isNotEmpty
+        ? ponente.nombre[0].toUpperCase()
+        : '?';
+    if (url != null && url.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          url,
+          width: 32, height: 32,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _inicialAvatar(inicial),
+        ),
+      );
+    }
+    return _inicialAvatar(inicial);
+  }
+
+  Widget _inicialAvatar(String inicial) => Container(
+    width: 32, height: 32,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Color(0xFF222222),
+    ),
+    child: Center(
+      child: Text(inicial,
+        style: const TextStyle(
+          color: Color(0xFF888888),
+          fontSize: 13,
+          fontWeight: FontWeight.w600)),
+    ),
+  );
 }
 
 // ─── Chips ────────────────────────────────────────────────────────────────────
