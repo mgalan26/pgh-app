@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pgh_app/core/providers/auth_provider.dart';
 import 'package:pgh_app/core/router.dart';
 import 'package:pgh_app/core/theme.dart';
@@ -28,6 +27,8 @@ class MainShell extends ConsumerWidget {
       currentTab = 1;
     } else if (location.startsWith('/ponentes')) {
       currentTab = 2;
+    } else if (location == '/cuenta') {
+      currentTab = 3;
     } else if (location.startsWith('/gestion')) {
       currentTab = 4;
     } else if (location.startsWith('/admin')) {
@@ -77,11 +78,11 @@ class MainShell extends ConsumerWidget {
                 _Tab(
                   icon: isLoggedIn ? Icons.person : Icons.login,
                   label: isLoggedIn ? 'Cuenta' : 'Acceder',
-                  isCurrent: false,
+                  isCurrent: currentTab == 3,
                   isEnabled: true,
                   onTap: () {
                     if (isLoggedIn) {
-                      _showCuenta(context, ref, email, org?.nombreCompleto);
+                      context.go(AppRoutes.cuenta);
                     } else {
                       context.push(AppRoutes.login);
                     }
@@ -111,69 +112,6 @@ class MainShell extends ConsumerWidget {
     );
   }
 
-  void _showCuenta(
-    BuildContext context,
-    WidgetRef ref,
-    String email,
-    String? nombre,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppTheme.darkCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: AppTheme.goldColor.withAlpha(40),
-              child: Text(
-                (nombre?.isNotEmpty == true ? nombre![0] : email[0])
-                    .toUpperCase(),
-                style: const TextStyle(
-                  color: AppTheme.goldColor,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (nombre != null)
-              Text(nombre,
-                  style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600)),
-            Text(email,
-                style: const TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 13)),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  context.go(AppRoutes.agenda);
-                  await Supabase.instance.client.auth.signOut();
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
-                  side: const BorderSide(color: Colors.redAccent),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                icon: const Icon(Icons.logout),
-                label: const Text('Cerrar sesión'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ─── Item del tab ─────────────────────────────────────────────────────────────

@@ -20,6 +20,7 @@ import 'package:pgh_app/features/admin/screens/cola_organizadores_screen.dart';
 import 'package:pgh_app/features/admin/screens/cola_eventos_screen.dart';
 import 'package:pgh_app/features/admin/screens/ponentes_screen.dart' as admin_ponentes;
 import 'package:pgh_app/features/admin/screens/admin_crear_evento_screen.dart';
+import 'package:pgh_app/features/cuenta/cuenta_screen.dart';
 import 'package:pgh_app/features/shell/main_shell.dart';
 
 class AppRoutes {
@@ -45,6 +46,7 @@ class AppRoutes {
   static const colaEventos         = '/admin/eventos';
   static const adminPonentes       = '/admin/ponentes';
   static const adminCrearEvento    = '/admin/crear-evento';
+  static const cuenta              = '/cuenta';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -56,6 +58,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       if (loc == '/') return AppRoutes.agenda;
       final isLoggedIn = authState.value?.session != null;
+      if (loc == AppRoutes.cuenta && !isLoggedIn) {
+        return AppRoutes.login;
+      }
       if (loc.startsWith('/gestion') && !isLoggedIn) {
         return AppRoutes.login;
       }
@@ -161,6 +166,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.adminCrearEvento,
             builder: (_, __) => const AdminCrearEventoScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.cuenta,
+            builder: (_, __) => const CuentaScreen(),
           ),
         ],
       ),
