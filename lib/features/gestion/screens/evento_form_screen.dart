@@ -85,8 +85,9 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   final _coorgNombreCtrl     = TextEditingController();
   final _coorgWebCtrl        = TextEditingController();
 
-  bool _guardando   = false;
-  bool _analizando  = false;
+  bool _guardando      = false;
+  bool _analizando     = false;
+  bool _cargandoEvento = false;
 
   // Drag-and-drop / paste
   bool _draggingOver = false;
@@ -103,6 +104,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
     final email = Supabase.instance.client.auth.currentUser?.email ?? '';
     _isAdmin = email == 'mgalan26@gmail.com';
     if (_isAdmin) _cargarEntidades();
+    if (widget.eventoId != null) _cargarEvento();
 
     // Listeners web: paste y drag-and-drop
     _pasteSub     = html.document.onPaste.listen(_onPaste);
@@ -121,6 +123,67 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
     setState(() {
       _entidades = List<Map<String, dynamic>>.from(data as List);
     });
+  }
+
+  Future<void> _cargarEvento() async {
+    setState(() => _cargandoEvento = true);
+    try {
+      final data = await Supabase.instance.client
+          .from('eventos')
+          .select('*')
+          .eq('id', widget.eventoId!)
+          .single();
+
+      setState(() {
+        _nombreCtrl.text       = (data['nombre']             as String?) ?? '';
+        _descripcionCtrl.text  = (data['descripcion']        as String?) ?? '';
+        _portadaUrlCtrl.text   = (data['portada_url']        as String?) ?? '';
+        _tipo                  = data['tipo']                as String?;
+
+        if (data['fecha_inicio'] != null) {
+          try { _fechaInicio = DateTime.parse(data['fecha_inicio'] as String); } catch (_) {}
+        }
+        if (data['fecha_fin'] != null) {
+          try { _fechaFin = DateTime.parse(data['fecha_fin'] as String); } catch (_) {}
+        }
+        if (data['hora_inicio'] != null) {
+          try {
+            final p = (data['hora_inicio'] as String).split(':');
+            _horaInicio = TimeOfDay(hour: int.parse(p[0]), minute: int.parse(p[1]));
+          } catch (_) {}
+        }
+        if (data['hora_fin'] != null) {
+          try {
+            final p = (data['hora_fin'] as String).split(':');
+            _horaFin = TimeOfDay(hour: int.parse(p[0]), minute: int.parse(p[1]));
+          } catch (_) {}
+        }
+
+        final paisCargado = data['pais'] as String?;
+        if (paisCargado != null && _paises.contains(paisCargado)) {
+          _pais = paisCargado;
+        }
+        _ciudadCtrl.text        = (data['ciudad']              as String?) ?? '';
+        _tienePresencial        = (data['tiene_presencial']    as bool?)   ?? true;
+        _tieneStreaming          = (data['tiene_streaming']     as bool?)   ?? false;
+        _urlOnlineCtrl.text     = (data['url_online']          as String?) ?? '';
+        _venueNombreCtrl.text   = (data['venue_nombre_libre']  as String?) ?? '';
+        _esGratuito             = (data['es_gratuito']         as bool?)   ?? true;
+        _urlReservaCtrl.text    = (data['url_reserva']         as String?) ?? '';
+        _emailContactoCtrl.text = (data['email_contacto']      as String?) ?? '';
+        _enlaceWebCtrl.text     = (data['enlace_web']          as String?) ?? '';
+        _coorgNombreCtrl.text   = (data['coorganizador_nombre'] as String?) ?? '';
+        _coorgWebCtrl.text      = (data['coorganizador_web']   as String?) ?? '';
+
+        if (_isAdmin) {
+          _entidadIdSeleccionada = data['entidad_id'] as String?;
+        }
+      });
+    } catch (e) {
+      if (mounted) _snack('Error al cargar el evento: $e');
+    } finally {
+      if (mounted) setState(() => _cargandoEvento = false);
+    }
   }
 
   @override
@@ -580,7 +643,10 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: Form(
+      body: _cargandoEvento
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.goldColor))
+          : Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -904,6 +970,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   }
 
   // ── Widgets auxiliares ────────────────────────────────────────────────────
+
 
   Widget _seccion(String titulo, List<Widget> children) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
