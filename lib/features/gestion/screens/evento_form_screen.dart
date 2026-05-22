@@ -5,11 +5,9 @@ import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:pgh_app/core/env.dart';
 import 'package:pgh_app/core/providers/auth_provider.dart';
 import 'package:pgh_app/core/theme.dart';
 
@@ -312,59 +310,19 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
     String base64Image, {
     String mediaType = 'image/jpeg',
   }) async {
-    final response = await http.post(
-      Uri.parse('https://api.anthropic.com/v1/messages'),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': Env.anthropicApiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: jsonEncode({
-        'model': 'claude-opus-4-5',
-        'max_tokens': 1024,
-        'messages': [
-          {
-            'role': 'user',
-            'content': [
-              {
-                'type': 'image',
-                'source': {
-                  'type': 'base64',
-                  'media_type': mediaType,
-                  'data': base64Image,
-                },
-              },
-              {
-                'type': 'text',
-                'text': '''Extrae los datos de este evento y devuelve SOLO un JSON válido sin markdown con estos campos:
-{
-  "nombre": "nombre del evento",
-  "descripcion": "descripción si existe",
-  "tipo": "Conferencia|Mesa redonda|Congreso|Networking|Cultural|Académico|Empresarial|Político|Exposición|Otro",
-  "fecha_inicio": "YYYY-MM-DD",
-  "hora_inicio": "HH:mm",
-  "pais": "país",
-  "ciudad": "ciudad",
-  "venue_nombre": "nombre del lugar",
-  "es_gratuito": true,
-  "enlace_web": "url si existe",
-  "ponente_nombre": "nombre completo del ponente principal si existe"
-}
-Si algún campo no está en la imagen ponlo como null.'''
-              }
-            ]
-          }
-        ]
-      }),
+    final response = await Supabase.instance.client.functions.invoke(
+      'claude-vision',
+      body: {'base64': base64Image, 'mediaType': mediaType},
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('Error de API: ${response.statusCode}');
+    if (response.data == null) {
+      throw Exception('Sin respuesta de la función');
+    }
+    if (response.data['error'] != null) {
+      throw Exception(response.data['error'] as String);
     }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final content = (body['content'] as List).first as Map<String, dynamic>;
-    final text = content['text'] as String;
+    final text = response.data['result'] as String;
 
     final jsonStr = text
         .replaceAll(RegExp(r'```json\s*'), '')
