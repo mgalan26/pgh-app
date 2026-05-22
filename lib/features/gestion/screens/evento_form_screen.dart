@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'dart:typed_data';
+import 'package:image/image.dart' as img;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -186,7 +188,12 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
       await reader.onLoad.first;
       final dataUrl = reader.result as String;
       final base64Image = dataUrl.split(',').last;
-      await _llamarClaudeConBase64(base64Image, mediaType: mediaType);
+      final Uint8List originalBytes = base64Decode(base64Image);
+      await _llamarClaudeConBase64(
+        base64Image,
+        mediaType: mediaType,
+        originalBytes: originalBytes,
+      );
     } catch (e) {
       if (mounted) _snack('Error al procesar la imagen: $e');
     } finally {
@@ -298,7 +305,10 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
     setState(() => _analizando = true);
     try {
       final bytes = await picked.readAsBytes();
-      await _llamarClaudeConBase64(base64Encode(bytes));
+      await _llamarClaudeConBase64(
+        base64Encode(bytes),
+        originalBytes: bytes,
+      );
     } catch (e) {
       if (mounted) _snack('Error al analizar la imagen: $e');
     } finally {
@@ -309,6 +319,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   Future<void> _llamarClaudeConBase64(
     String base64Image, {
     String mediaType = 'image/jpeg',
+    Uint8List? originalBytes,
   }) async {
     final response = await Supabase.instance.client.functions.invoke(
       'claude-vision',
@@ -372,8 +383,69 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
       }
     });
 
+    // Recortar y subir imagen de portada si hay coordenadas y bytes originales
+    final cropData = data['imagen_crop'];
+    if (cropData is Map && originalBytes != null) {
+      try {
+        await _recortarYSubirPortada(originalBytes, cropData);
+      } catch (e) {
+        // No es fatal: el usuario puede poner la URL manualmente
+        debugPrint('Crop/upload portada: $e');
+      }
+    }
+
     if (mounted) {
       _snack('Campos rellenados desde la imagen ✓', isError: false);
+    }
+  }
+
+  Future<void> _recortarYSubirPortada(
+    Uint8List bytes,
+    Map<dynamic, dynamic> cropData,
+  ) async {
+    final original = img.decodeImage(bytes);
+    if (original == null) return;
+
+    final double cx = (cropData['x'] as num?)?.toDouble() ?? 0.0;
+    final double cy = (cropData['y'] as num?)?.toDouble() ?? 0.0;
+    final double cw = (cropData['w'] as num?)?.toDouble() ?? 1.0;
+    final double ch = (cropData['h'] as num?)?.toDouble() ?? 1.0;
+
+    final int x = (cx.clamp(0.0, 1.0) * original.width).round();
+    final int y = (cy.clamp(0.0, 1.0) * original.height).round();
+    int w = (cw.clamp(0.0, 1.0) * original.width).round();
+    int h = (ch.clamp(0.0, 1.0) * original.height).round();
+
+    if (x + w > original.width)  w = original.width  - x;
+    if (y + h > original.height) h = original.height - y;
+    if (w <= 0 || h <= 0) return;
+
+    final img.Image cropped = img.copyCrop(
+      original, x: x, y: y, width: w, height: h,
+    );
+    final Uint8List jpegBytes = img.encodeJpg(cropped, quality: 85);
+
+    final path = 'eventos/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    await Supabase.instance.client.storage
+        .from('portadas')
+        .uploadBinary(
+          path,
+          jpegBytes,
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: true,
+          ),
+        );
+
+    final url = Supabase.instance.client.storage
+        .from('portadas')
+        .getPublicUrl(path);
+
+    if (mounted) {
+      setState(() {
+        _portadaUrlCtrl.text =
+            '$url?t=${DateTime.now().millisecondsSinceEpoch}';
+      });
     }
   }
 

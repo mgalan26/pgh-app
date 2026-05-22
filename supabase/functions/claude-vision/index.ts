@@ -44,9 +44,11 @@ serve(async (req) => {
   "venue_nombre": "nombre del lugar",
   "es_gratuito": true,
   "enlace_web": "url si existe",
-  "ponente_nombre": "nombre completo del ponente principal si existe"
+  "ponente_nombre": "nombre completo del ponente principal si existe",
+  "imagen_crop": {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
 }
-Si algún campo no está en la imagen ponlo como null.`
+Para imagen_crop: indica la zona de la imagen que contiene la fotografía o ilustración principal del evento (excluyendo textos, logos y fondos de diseño gráfico). Usa fracciones de 0.0 a 1.0 donde x,y es la esquina superior izquierda y w,h son el ancho y alto del recorte. Si toda la imagen es la foto principal usa {"x":0.0,"y":0.0,"w":1.0,"h":1.0}. Si no hay ninguna foto o ilustración principal usa null.
+Si algún otro campo no está en la imagen ponlo como null.`
             }
           ]
         }]
