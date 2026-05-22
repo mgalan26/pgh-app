@@ -10,10 +10,12 @@ import 'package:pgh_app/core/theme.dart';
 
 final agendaProvider =
     FutureProvider.autoDispose<List<Evento>>((ref) async {
+  final hoy = DateTime.now().toIso8601String().substring(0, 10);
   final data = await Supabase.instance.client
       .from('eventos')
       .select('*, entidades(nombre, verificada), ponentes(*)')
       .eq('estado', 'publicado')
+      .gte('fecha_inicio', hoy)
       .order('fecha_inicio', ascending: true);
 
   return (data as List).map((e) {
