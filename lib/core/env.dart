@@ -9,4 +9,7 @@ abstract class Env {
 
   @EnviedField(varName: 'SUPABASE_ANON_KEY', obfuscate: true)
   static final String supabaseAnonKey = _Env.supabaseAnonKey;
+
+  @EnviedField(varName: 'ANTHROPIC_API_KEY', obfuscate: true)
+  static final String anthropicApiKey = _Env.anthropicApiKey;
 }

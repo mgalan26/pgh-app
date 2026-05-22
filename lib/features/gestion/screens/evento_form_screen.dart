@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pgh_app/core/env.dart';
 import 'package:pgh_app/core/providers/auth_provider.dart';
 import 'package:pgh_app/core/theme.dart';
 
@@ -78,7 +82,8 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   final _coorgNombreCtrl     = TextEditingController();
   final _coorgWebCtrl        = TextEditingController();
 
-  bool _guardando = false;
+  bool _guardando   = false;
+  bool _analizando  = false;
 
   @override
   void initState() {
@@ -167,6 +172,168 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
 
   String _formatHora(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  // ── Rellenar desde imagen ─────────────────────────────────────────────────
+
+  Future<void> _rellenarDesdeImagen() async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppTheme.darkCard,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined,
+                  color: AppTheme.goldColor),
+              title: const Text('Galería',
+                  style: TextStyle(color: AppTheme.textPrimary)),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined,
+                  color: AppTheme.goldColor),
+              title: const Text('Cámara',
+                  style: TextStyle(color: AppTheme.textPrimary)),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
+    if (picked == null) return;
+
+    setState(() => _analizando = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
+      final response = await http.post(
+        Uri.parse('https://api.anthropic.com/v1/messages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': Env.anthropicApiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: jsonEncode({
+          'model': 'claude-opus-4-5',
+          'max_tokens': 1024,
+          'messages': [
+            {
+              'role': 'user',
+              'content': [
+                {
+                  'type': 'image',
+                  'source': {
+                    'type': 'base64',
+                    'media_type': 'image/jpeg',
+                    'data': base64Image,
+                  },
+                },
+                {
+                  'type': 'text',
+                  'text': '''Extrae los datos de este evento y devuelve SOLO un JSON válido sin markdown con estos campos:
+{
+  "nombre": "nombre del evento",
+  "descripcion": "descripción si existe",
+  "tipo": "Conferencia|Mesa redonda|Congreso|Networking|Cultural|Académico|Empresarial|Político|Exposición|Otro",
+  "fecha_inicio": "YYYY-MM-DD",
+  "hora_inicio": "HH:mm",
+  "pais": "país",
+  "ciudad": "ciudad",
+  "venue_nombre": "nombre del lugar",
+  "es_gratuito": true,
+  "enlace_web": "url si existe",
+  "ponente_nombre": "nombre completo del ponente principal si existe"
+}
+Si algún campo no está en la imagen ponlo como null.'''
+                }
+              ]
+            }
+          ]
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error de API: ${response.statusCode}');
+      }
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final content = (body['content'] as List).first as Map<String, dynamic>;
+      final text = content['text'] as String;
+
+      // Elimina posibles bloques markdown ```json ... ```
+      final jsonStr = text
+          .replaceAll(RegExp(r'```json\s*'), '')
+          .replaceAll(RegExp(r'```\s*'), '')
+          .trim();
+
+      final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+
+      setState(() {
+        if (data['nombre'] != null) {
+          _nombreCtrl.text = data['nombre'] as String;
+        }
+        if (data['descripcion'] != null) {
+          _descripcionCtrl.text = data['descripcion'] as String;
+        }
+        if (data['tipo'] != null && _tiposEvento.contains(data['tipo'])) {
+          _tipo = data['tipo'] as String;
+        }
+        if (data['fecha_inicio'] != null) {
+          try {
+            _fechaInicio = DateTime.parse(data['fecha_inicio'] as String);
+          } catch (_) {}
+        }
+        if (data['hora_inicio'] != null) {
+          try {
+            final parts = (data['hora_inicio'] as String).split(':');
+            _horaInicio = TimeOfDay(
+              hour: int.parse(parts[0]),
+              minute: int.parse(parts[1]),
+            );
+          } catch (_) {}
+        }
+        if (data['pais'] != null && _paises.contains(data['pais'])) {
+          _pais = data['pais'] as String;
+        }
+        if (data['ciudad'] != null) {
+          _ciudadCtrl.text = data['ciudad'] as String;
+        }
+        if (data['venue_nombre'] != null) {
+          _venueNombreCtrl.text = data['venue_nombre'] as String;
+        }
+        if (data['es_gratuito'] != null) {
+          _esGratuito = data['es_gratuito'] as bool;
+        }
+        if (data['enlace_web'] != null) {
+          _enlaceWebCtrl.text = data['enlace_web'] as String;
+        }
+      });
+
+      if (mounted) {
+        _snack('Campos rellenados desde la imagen ✓', isError: false);
+      }
+    } catch (e) {
+      if (mounted) {
+        _snack('Error al analizar la imagen: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _analizando = false);
+    }
+  }
 
   // ── Guardar ───────────────────────────────────────────────────────────────
 
@@ -304,6 +471,33 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+
+            // Botón rellenar desde imagen
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _analizando ? null : _rellenarDesdeImagen,
+                icon: _analizando
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppTheme.goldColor))
+                    : const Icon(Icons.camera_alt_outlined,
+                        color: AppTheme.goldColor, size: 18),
+                label: Text(
+                  _analizando ? 'Analizando imagen…' : 'Rellenar desde imagen',
+                  style: const TextStyle(color: AppTheme.goldColor),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.goldColor,
+                  side: const BorderSide(color: AppTheme.goldColor),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
 
             if (_isAdmin)
               _seccion('Entidad organizadora', [
