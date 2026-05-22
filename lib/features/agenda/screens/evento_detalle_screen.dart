@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pgh_app/core/models/models.dart';
+import 'package:pgh_app/core/theme.dart';
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
@@ -263,6 +264,22 @@ class _EventoDetalleBody extends StatelessWidget {
             icon: Icons.location_city_outlined,
             content: '${evento.ciudad}, ${evento.pais}',
           ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _abrirUrl(_googleCalendarUrl()),
+              icon: const Icon(Icons.calendar_month_outlined, size: 16),
+              label: const Text('Añadir a Google Calendar'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.goldColor,
+                side: const BorderSide(color: AppTheme.goldColor),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -378,40 +395,51 @@ class _EventoDetalleBody extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF222222)),
               ),
-              child: GestureDetector(
-                onTap: () {
-                  final url = evento.venue?.urlMapa ??
-                      'https://www.google.com/maps/search/?api=1&query='
-                      '${Uri.encodeComponent('${evento.venueNombre}, ${evento.ciudad}, ${evento.pais}')}';
-                  _abrirUrl(url);
-                },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      const Icon(Icons.location_on,
-                          color: Color(0xFFC9A84C), size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(evento.venueNombre,
-                            style: const TextStyle(
-                              color: Color(0xFFF0E8D8),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            )),
-                      ),
-                      const Icon(Icons.open_in_new,
-                          color: Color(0xFF555555), size: 14),
-                    ]),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 24),
-                      child: Text('${evento.ciudad}, ${evento.pais}',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.location_on,
+                        color: Color(0xFFC9A84C), size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(evento.venueNombre,
                           style: const TextStyle(
-                              color: Color(0xFF888888), fontSize: 13)),
+                            color: Color(0xFFF0E8D8),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          )),
                     ),
-                  ],
-                ),
+                  ]),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 24),
+                    child: Text('${evento.ciudad}, ${evento.pais}',
+                        style: const TextStyle(
+                            color: Color(0xFF888888), fontSize: 13)),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final url = evento.venue?.urlMapa ??
+                            'https://www.google.com/maps/search/?api=1&query='
+                            '${Uri.encodeComponent('${evento.venueNombre}, ${evento.ciudad}, ${evento.pais}')}';
+                        _abrirUrl(url);
+                      },
+                      icon: const Icon(Icons.map_outlined, size: 16),
+                      label: const Text('Ver en Google Maps'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.goldColor,
+                        side: const BorderSide(color: AppTheme.goldColor),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             if (evento.tieneStreaming) const SizedBox(height: 10),
@@ -444,22 +472,6 @@ class _EventoDetalleBody extends StatelessWidget {
                   ),
               ]),
             ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _abrirUrl(_googleCalendarUrl()),
-              icon: const Icon(Icons.calendar_month_outlined, size: 16),
-              label: const Text('Añadir a Google Calendar'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF888888),
-                side: const BorderSide(color: Color(0xFF333333)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-          ),
         ],
       ),
     );
