@@ -59,7 +59,7 @@ class HomeScreen extends StatelessWidget {
                       fontSize: 11,
                       letterSpacing: 3)),
                   const SizedBox(height: 8),
-                  const Text('Listado de Eventos',
+                  const Text('Agenda de Eventos',
                     style: TextStyle(
                       color: Color(0xFFF0E8D8),
                       fontSize: 26,

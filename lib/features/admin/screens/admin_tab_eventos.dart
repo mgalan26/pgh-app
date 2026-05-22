@@ -47,50 +47,34 @@ class AdminTabEventos extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(tabEventosProvider);
 
-    return Stack(
-      children: [
-        async.when(
-          loading: () => const Center(
-              child: CircularProgressIndicator(color: AppTheme.goldColor)),
-          error: (e, _) => Center(
-              child: Text('Error: $e',
-                  style: const TextStyle(color: Colors.redAccent))),
-          data: (eventos) {
-            if (eventos.isEmpty) {
-              return const Center(
-                child: Text('No hay eventos registrados',
-                    style: TextStyle(color: AppTheme.textMuted)),
-              );
-            }
-            // Pendientes al principio
-            final pendientes = eventos.where((e) => e['estado'] == 'pendiente').toList();
-            final resto      = eventos.where((e) => e['estado'] != 'pendiente').toList();
-            final todos      = [...pendientes, ...resto];
+    return async.when(
+      loading: () => const Center(
+          child: CircularProgressIndicator(color: AppTheme.goldColor)),
+      error: (e, _) => Center(
+          child: Text('Error: $e',
+              style: const TextStyle(color: Colors.redAccent))),
+      data: (eventos) {
+        if (eventos.isEmpty) {
+          return const Center(
+            child: Text('No hay eventos registrados',
+                style: TextStyle(color: AppTheme.textMuted)),
+          );
+        }
+        // Pendientes al principio
+        final pendientes = eventos.where((e) => e['estado'] == 'pendiente').toList();
+        final resto      = eventos.where((e) => e['estado'] != 'pendiente').toList();
+        final todos      = [...pendientes, ...resto];
 
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-              itemCount: todos.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (_, i) => _EventoCard(
-                evento: todos[i],
-                onRefresh: () => ref.invalidate(tabEventosProvider),
-              ),
-            );
-          },
-        ),
-        Positioned(
-          bottom: 20,
-          right: 20,
-          child: FloatingActionButton.extended(
-            onPressed: () => AdminTabEventos.abrirNuevoEvento(context, ref),
-            backgroundColor: AppTheme.goldColor,
-            foregroundColor: AppTheme.darkBg,
-            icon: const Icon(Icons.event),
-            label: const Text('Nuevo evento',
-                style: TextStyle(fontWeight: FontWeight.w600)),
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          itemCount: todos.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (_, i) => _EventoCard(
+            evento: todos[i],
+            onRefresh: () => ref.invalidate(tabEventosProvider),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
