@@ -532,7 +532,7 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
       final bytes = await picked.readAsBytes();
       final path = '${DateTime.now().millisecondsSinceEpoch}.jpg';
       await Supabase.instance.client.storage
-          .from('portadas')
+          .from('Portadas')
           .uploadBinary(
             path,
             bytes,
@@ -542,7 +542,7 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
             ),
           );
       final url = Supabase.instance.client.storage
-          .from('portadas')
+          .from('Portadas')
           .getPublicUrl(path);
       if (mounted) setState(() => _portadaUrlCtrl.text = url);
     } catch (e) {

@@ -490,7 +490,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
 
     final path = 'eventos/${DateTime.now().millisecondsSinceEpoch}.jpg';
     await Supabase.instance.client.storage
-        .from('portadas')
+        .from('Portadas')
         .uploadBinary(
           path,
           jpegBytes,
@@ -501,7 +501,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
         );
 
     final url = Supabase.instance.client.storage
-        .from('portadas')
+        .from('Portadas')
         .getPublicUrl(path);
 
     if (mounted) {
