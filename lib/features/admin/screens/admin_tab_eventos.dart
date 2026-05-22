@@ -476,7 +476,7 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
           .order('apellido', ascending: true),
       sb.from('entidades')
           .select('id, nombre')
-          .eq('verificada', true)
+          .eq('activa', true)
           .order('nombre', ascending: true),
     ]);
     if (mounted) {
