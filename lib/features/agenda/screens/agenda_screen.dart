@@ -5,8 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pgh_app/core/models/models.dart';
 import 'package:pgh_app/core/theme.dart';
-import 'package:pgh_app/core/providers/auth_provider.dart';
-import 'package:pgh_app/core/router.dart';
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
@@ -70,22 +68,8 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncEventos = ref.watch(agendaProvider);
-    final authAsync = ref.watch(authStateProvider);
-    final email = authAsync.value?.session?.user.email?.toLowerCase() ?? '';
-    final isAdmin = email == 'mgalan26@gmail.com';
-
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
-      floatingActionButton: isAdmin
-          ? FloatingActionButton.extended(
-              onPressed: () => context.go(AppRoutes.adminCrearEvento),
-              backgroundColor: AppTheme.goldColor,
-              foregroundColor: AppTheme.darkBg,
-              icon: const Icon(Icons.add),
-              label: const Text('Nuevo evento',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-            )
-          : null,
       appBar: AppBar(
         backgroundColor: const Color(0xFF0D0D0D),
         elevation: 0,
