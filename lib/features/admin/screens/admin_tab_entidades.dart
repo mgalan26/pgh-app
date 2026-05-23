@@ -579,7 +579,7 @@ class _EntidadEditSheetState extends State<_EntidadEditSheet> {
       ]);
 }
 
-// ─── Modal nueva entidad + organizador ───────────────────────────────────────
+// ─── Modal nueva entidad ──────────────────────────────────────────────────────
 
 class _FormAltaOrganizador extends StatefulWidget {
   final VoidCallback onCreado;
@@ -590,22 +590,23 @@ class _FormAltaOrganizador extends StatefulWidget {
 }
 
 class _FormAltaOrganizadorState extends State<_FormAltaOrganizador> {
-  final _formKey      = GlobalKey<FormState>();
-  final _nombreCtrl   = TextEditingController();
-  final _apellidoCtrl = TextEditingController();
-  final _emailCtrl    = TextEditingController();
-  final _passCtrl     = TextEditingController();
-  final _entidadCtrl  = TextEditingController();
+  final _formKey       = GlobalKey<FormState>();
+  final _nombreCtrl    = TextEditingController();
+  final _descripCtrl   = TextEditingController();
+  final _ciudadCtrl    = TextEditingController();
+  final _webCtrl       = TextEditingController();
+  final _telefonoCtrl  = TextEditingController();
   String? _tipoEntidad;
   String? _pais = 'España';
-  bool _obscure  = true;
   bool _enviando = false;
 
   @override
   void dispose() {
-    _nombreCtrl.dispose(); _apellidoCtrl.dispose();
-    _emailCtrl.dispose();  _passCtrl.dispose();
-    _entidadCtrl.dispose();
+    _nombreCtrl.dispose();
+    _descripCtrl.dispose();
+    _ciudadCtrl.dispose();
+    _webCtrl.dispose();
+    _telefonoCtrl.dispose();
     super.dispose();
   }
 
@@ -613,49 +614,25 @@ class _FormAltaOrganizadorState extends State<_FormAltaOrganizador> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _enviando = true);
     try {
-      final authRes = await http.post(
-        Uri.parse('${Env.supabaseUrl}/auth/v1/signup'),
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': Env.supabaseAnonKey,
-        },
-        body: jsonEncode({
-          'email':    _emailCtrl.text.trim(),
-          'password': _passCtrl.text,
-        }),
-      );
-      final authData = jsonDecode(authRes.body) as Map<String, dynamic>;
-      if (authRes.statusCode != 200) {
-        throw Exception(authData['msg'] ?? authData['message'] ?? 'Error');
-      }
-      final userId = authData['id'] as String?;
-      if (userId == null) throw Exception('No se obtuvo ID de usuario');
-
-      final sb = Supabase.instance.client;
-      final entidadRes = await sb.from('entidades').insert({
-        'nombre':     _entidadCtrl.text.trim(),
-        'tipo':       _tipoEntidad,
-        'pais':       _pais,
-        'verificada': false,
-        'activa':     true,
-      }).select('id').single();
-
-      await sb.from('organizadores').insert({
-        'id':         userId,
-        'nombre':     _nombreCtrl.text.trim(),
-        'apellido':   _apellidoCtrl.text.trim(),
-        'email':      _emailCtrl.text.trim(),
-        'entidad_id': entidadRes['id'],
-        'rol':        'organizador',
-        'estado':     'aprobado',
+      await Supabase.instance.client.from('entidades').insert({
+        'nombre':      _nombreCtrl.text.trim(),
+        'descripcion': _descripCtrl.text.trim().isEmpty ? null : _descripCtrl.text.trim(),
+        'tipo':        _tipoEntidad,
+        'pais':        _pais,
+        'ciudad':      _ciudadCtrl.text.trim().isEmpty ? null : _ciudadCtrl.text.trim(),
+        'web':         _webCtrl.text.trim().isEmpty ? null : _webCtrl.text.trim(),
+        'telefono':    _telefonoCtrl.text.trim().isEmpty ? null : _telefonoCtrl.text.trim(),
+        'verificada':  false,
+        'activa':      true,
       });
 
       widget.onCreado();
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Entidad y organizador creados ✓'),
+          content: Text('Entidad creada ✓'),
           backgroundColor: AppTheme.goldColor,
+          duration: Duration(seconds: 2),
         ));
       }
     } catch (e) {
@@ -684,78 +661,58 @@ class _FormAltaOrganizadorState extends State<_FormAltaOrganizador> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Nueva entidad organizadora',
-                style: TextStyle(color: AppTheme.goldColor, fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              _label('Contacto principal'),
-              Row(children: [
-                Expanded(child: _tf(_nombreCtrl, 'Nombre *')),
-                const SizedBox(width: 10),
-                Expanded(child: _tf(_apellidoCtrl, 'Apellido *')),
-              ]),
-              const SizedBox(height: 10),
-              _tf(_emailCtrl, 'Email *', keyboard: TextInputType.emailAddress,
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Obligatorio';
-                    if (!v.contains('@')) return 'Email no válido';
-                    return null;
-                  }),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _passCtrl,
-                obscureText: _obscure,
-                style: const TextStyle(color: AppTheme.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Contraseña temporal *',
-                  suffixIcon: IconButton(
-                    icon: Icon(_obscure
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                      color: AppTheme.textMuted),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
-                ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Obligatorio';
-                  if (v.length < 6) return 'Mínimo 6 caracteres';
-                  return null;
-                },
-              ),
+              const Text('Nueva entidad',
+                  style: TextStyle(
+                      color: AppTheme.goldColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              _label('Entidad'),
-              _tf(_entidadCtrl, 'Nombre de la organización *'),
+              _tf(_nombreCtrl, 'Nombre *',
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Obligatorio' : null),
+              const SizedBox(height: 10),
+              _tf(_descripCtrl, 'Descripción', maxLines: 3),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                initialValue: _tipoEntidad,
+                value: _tipoEntidad,
                 decoration: const InputDecoration(labelText: 'Tipo *'),
                 dropdownColor: AppTheme.darkCard,
                 style: const TextStyle(color: AppTheme.textPrimary),
-                items: _tiposEntidad.map((t) =>
-                    DropdownMenuItem(value: t, child: Text(t))).toList(),
+                items: _tiposEntidad
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .toList(),
                 onChanged: (v) => setState(() => _tipoEntidad = v),
-                validator: (v) => v == null ? 'Obligatorio' : null,
+                validator: (v) => v == null ? 'Selecciona un tipo' : null,
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                initialValue: _pais,
+                value: _pais,
                 decoration: const InputDecoration(labelText: 'País *'),
                 dropdownColor: AppTheme.darkCard,
                 style: const TextStyle(color: AppTheme.textPrimary),
                 isExpanded: true,
-                items: _paisesEntidad.map((p) =>
-                    DropdownMenuItem(value: p, child: Text(p))).toList(),
+                items: _paisesEntidad
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
                 onChanged: (v) => setState(() => _pais = v),
-                validator: (v) => v == null ? 'Obligatorio' : null,
+                validator: (v) => v == null ? 'Selecciona un país' : null,
               ),
+              const SizedBox(height: 10),
+              _tf(_ciudadCtrl, 'Ciudad'),
+              const SizedBox(height: 10),
+              _tf(_webCtrl, 'Web', hint: 'https://...'),
+              const SizedBox(height: 10),
+              _tf(_telefonoCtrl, 'Teléfono',
+                  keyboard: TextInputType.phone),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _enviando ? null : _crear,
                 child: _enviando
-                    ? const SizedBox(height: 20, width: 20,
+                    ? const SizedBox(
+                        height: 20, width: 20,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppTheme.darkBg))
-                    : const Text('Crear entidad y organizador'),
+                            strokeWidth: 2, color: AppTheme.darkBg))
+                    : const Text('Crear entidad'),
               ),
               const SizedBox(height: 8),
             ],
@@ -765,24 +722,21 @@ class _FormAltaOrganizadorState extends State<_FormAltaOrganizador> {
     );
   }
 
-  Widget _label(String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(t, style: const TextStyle(
-      color: AppTheme.goldColor, fontSize: 12,
-      fontWeight: FontWeight.w600, letterSpacing: 0.8)),
-  );
-
-  Widget _tf(TextEditingController ctrl, String label, {
+  Widget _tf(
+    TextEditingController ctrl,
+    String label, {
+    String? hint,
+    int maxLines = 1,
     TextInputType? keyboard,
     String? Function(String?)? validator,
   }) =>
       TextFormField(
         controller: ctrl,
+        maxLines: maxLines,
         keyboardType: keyboard,
         style: const TextStyle(color: AppTheme.textPrimary),
-        decoration: InputDecoration(labelText: label),
-        validator: validator ??
-            (v) => (v == null || v.trim().isEmpty) ? 'Obligatorio' : null,
+        decoration: InputDecoration(labelText: label, hintText: hint),
+        validator: validator,
       );
 }
 

@@ -1,9 +1,22 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pgh_app/core/env.dart';
 import 'package:pgh_app/core/theme.dart';
 
 // ─── Providers ────────────────────────────────────────────────────────────────
+
+final _entidadesInviteProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final data = await Supabase.instance.client
+      .from('entidades')
+      .select('id, nombre')
+      .eq('activa', true)
+      .order('nombre', ascending: true);
+  return List<Map<String, dynamic>>.from(data as List);
+});
 
 final tabAutorizadosPendientesProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
@@ -36,16 +49,40 @@ class AdminTabAutorizados extends ConsumerWidget {
       length: 2,
       child: Column(
         children: [
-          const TabBar(
-            indicatorColor: AppTheme.goldColor,
-            indicatorWeight: 2,
-            labelColor: AppTheme.goldColor,
-            unselectedLabelColor: AppTheme.textMuted,
-            labelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            tabs: [
-              Tab(text: 'Pendientes'),
-              Tab(text: 'Activos'),
-            ],
+          // Cabecera con botón Invitar
+          Container(
+            color: AppTheme.darkBg,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: TabBar(
+                    indicatorColor: AppTheme.goldColor,
+                    indicatorWeight: 2,
+                    labelColor: AppTheme.goldColor,
+                    unselectedLabelColor: AppTheme.textMuted,
+                    labelStyle:
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    tabs: [
+                      Tab(text: 'Pendientes'),
+                      Tab(text: 'Activos'),
+                    ],
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _abrirInvitar(context, ref),
+                  icon: const Icon(Icons.mail_outline, size: 15),
+                  label: const Text('Invitar', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.goldColor,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
           ),
           Expanded(
             child: TabBarView(
@@ -56,6 +93,22 @@ class AdminTabAutorizados extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  static void _abrirInvitar(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.darkCard,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => _FormInvitarUsuario(
+        onInvitado: () {
+          ref.invalidate(tabAutorizadosPendientesProvider);
+          ref.invalidate(tabAutorizadosActivosProvider);
+        },
       ),
     );
   }
@@ -348,6 +401,183 @@ class _ActivoTileState extends State<_ActivoTile> {
                 tooltip: 'Revocar acceso',
                 onPressed: _revocar,
               ),
+      ),
+    );
+  }
+}
+
+// ─── Formulario invitar usuario ───────────────────────────────────────────────
+
+class _FormInvitarUsuario extends ConsumerStatefulWidget {
+  final VoidCallback onInvitado;
+  const _FormInvitarUsuario({required this.onInvitado});
+
+  @override
+  ConsumerState<_FormInvitarUsuario> createState() =>
+      _FormInvitarUsuarioState();
+}
+
+class _FormInvitarUsuarioState extends ConsumerState<_FormInvitarUsuario> {
+  final _formKey   = GlobalKey<FormState>();
+  final _emailCtrl = TextEditingController();
+  String? _entidadId;
+  bool _enviando = false;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _invitar() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_entidadId == null) return;
+    setState(() => _enviando = true);
+
+    try {
+      final email = _emailCtrl.text.trim();
+
+      // 1. Invitar usuario via Supabase Admin API
+      final inviteRes = await http.post(
+        Uri.parse('${Env.supabaseUrl}/auth/v1/invite'),
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':        Env.supabaseAnonKey,
+          'Authorization': 'Bearer ${Env.supabaseServiceKey}',
+        },
+        body: jsonEncode({'email': email}),
+      );
+
+      final inviteData = jsonDecode(inviteRes.body) as Map<String, dynamic>;
+      if (inviteRes.statusCode != 200) {
+        final msg = inviteData['msg'] as String?
+            ?? inviteData['message'] as String?
+            ?? inviteData['error_description'] as String?
+            ?? 'Error al invitar (${inviteRes.statusCode})';
+        throw Exception(msg);
+      }
+
+      final userId = inviteData['id'] as String?;
+      if (userId == null) throw Exception('No se obtuvo ID de usuario');
+
+      // 2. Insertar en usuarios_autorizados como activo (invitado por admin)
+      await Supabase.instance.client.from('usuarios_autorizados').insert({
+        'usuario_id': userId,
+        'email':      email,
+        'entidad_id': _entidadId,
+        'estado':     'activo',
+      });
+
+      widget.onInvitado();
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Invitación enviada a $email ✓'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entidadesAsync = ref.watch(_entidadesInviteProvider);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20, right: 20, top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Invitar usuario',
+              style: TextStyle(
+                  color: AppTheme.goldColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Supabase enviará un email de invitación. El usuario tendrá acceso directo a la entidad seleccionada.',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(color: AppTheme.textPrimary),
+              decoration: const InputDecoration(
+                labelText: 'Email del usuario *',
+                hintText: 'usuario@ejemplo.com',
+                prefixIcon: Icon(Icons.email_outlined,
+                    size: 18, color: AppTheme.textMuted),
+              ),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Obligatorio';
+                if (!v.contains('@')) return 'Email no válido';
+                return null;
+              },
+            ),
+            const SizedBox(height: 14),
+            entidadesAsync.when(
+              loading: () => const Center(
+                  child: SizedBox(
+                      height: 24, width: 24,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.goldColor))),
+              error: (e, _) => Text('Error cargando entidades: $e',
+                  style: const TextStyle(
+                      color: Colors.redAccent, fontSize: 12)),
+              data: (entidades) => DropdownButtonFormField<String>(
+                value: _entidadId,
+                decoration: const InputDecoration(
+                  labelText: 'Entidad que gestionará *',
+                  prefixIcon: Icon(Icons.business_outlined,
+                      size: 18, color: AppTheme.textMuted),
+                ),
+                dropdownColor: AppTheme.darkCard,
+                style: const TextStyle(color: AppTheme.textPrimary),
+                isExpanded: true,
+                items: entidades
+                    .map((e) => DropdownMenuItem<String>(
+                          value: e['id'] as String,
+                          child: Text(e['nombre'] as String? ?? ''),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _entidadId = v),
+                validator: (v) =>
+                    v == null ? 'Selecciona una entidad' : null,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _enviando ? null : _invitar,
+              icon: _enviando
+                  ? const SizedBox(
+                      height: 16, width: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.darkBg))
+                  : const Icon(Icons.send_outlined, size: 16),
+              label: Text(_enviando ? 'Enviando…' : 'Enviar invitación'),
+            ),
+          ],
+        ),
       ),
     );
   }
