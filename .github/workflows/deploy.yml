@@ -32,23 +32,14 @@ jobs:
       - name: Build web
         run: flutter build web --release
 
-      - name: Deploy via LFTP
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USERNAME }}
-          FTP_PASS: ${{ secrets.FTP_PASSWORD }}
-        run: |
-          sudo apt-get install -y lftp
-          cat > /tmp/deploy.lftp << EOF
-          set ftp:ssl-allow true
-          set ftp:ssl-force true
-          set ftp:ssl-protect-data false
-          set ssl:verify-certificate false
-          set ftp:passive-mode true
-          set net:timeout 60
-          set net:max-retries 3
-          open -u "${FTP_USER},${FTP_PASS}" ftps://${FTP_HOST}
-          mirror --reverse --delete --parallel=2 --verbose build/web/ /
-          bye
-          EOF
-          lftp -f /tmp/deploy.lftp
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: build/web/
+          server-dir: ./
+          dangerous-clean-slate: true
