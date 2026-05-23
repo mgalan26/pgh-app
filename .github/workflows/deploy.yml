@@ -39,16 +39,17 @@ jobs:
           FTP_PASS: ${{ secrets.FTP_PASSWORD }}
         run: |
           sudo apt-get install -y lftp
-          lftp -c "
-            set ftp:ssl-allow true;
-            set ftp:ssl-force true;
-            set ftp:ssl-protect-data true;
-            set ssl:verify-certificate false;
-            set ftp:passive-mode true;
-            set net:timeout 30;
-            set net:max-retries 3;
-            set net:reconnect-interval-base 5;
-            open -u '$FTP_USER','$FTP_PASS' ftps://$FTP_HOST;
-            mirror --reverse --delete --parallel=4 --verbose build/web/ /;
-            bye
-          "
+          cat > /tmp/deploy.lftp << SCRIPT
+          set ftp:ssl-allow true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data false
+          set ssl:verify-certificate false
+          set ftp:passive-mode true
+          set net:timeout 60
+          set net:max-retries 5
+          set net:reconnect-interval-base 10
+          open -u "$FTP_USER" "$FTP_PASS" ftps://$FTP_HOST
+          mirror --reverse --delete --parallel=2 --verbose build/web/ /
+          bye
+          SCRIPT
+          lftp -f /tmp/deploy.lftp
