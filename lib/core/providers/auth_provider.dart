@@ -81,4 +81,4 @@ final isPonenteProvider = FutureProvider<bool>((ref) async {
       .eq('usuario_id', userId)
       .maybeSingle();
   return data != null;
-});;
+});
