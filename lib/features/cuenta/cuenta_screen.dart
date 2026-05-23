@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pgh_app/core/theme.dart';
+import 'package:pgh_app/core/router.dart';
 
 class CuentaScreen extends ConsumerStatefulWidget {
   const CuentaScreen({super.key});
@@ -12,29 +13,23 @@ class CuentaScreen extends ConsumerStatefulWidget {
 }
 
 class _CuentaScreenState extends ConsumerState<CuentaScreen> {
-  bool _cargando   = true;
-  bool _guardando  = false;
+  bool _cargando  = true;
+  bool _guardando = false;
 
-  // Auth
-  String _email    = '';
-  String _authNombre = '';
+  String _email      = '';
+  String _nombre     = '';
+  String _apellido   = '';
 
-  // CRM controllers
   final _telefonoCtrl  = TextEditingController();
   final _profesionCtrl = TextEditingController();
   final _ciudadCtrl    = TextEditingController();
   final _direccionCtrl = TextEditingController();
   String? _pais;
 
-  // Temas
-  List<Map<String, dynamic>> _temas           = [];
-  final Set<String>          _temasSeleccionados = {};
-
-  // Ponentes favoritos
-  List<Map<String, dynamic>> _ponentes          = [];
-  final Set<String>          _ponentesFavoritos = {};
-
-  String? _usuarioId;
+  List<Map<String, dynamic>> _temas               = [];
+  final Set<String>          _temasSeleccionados  = {};
+  List<Map<String, dynamic>> _ponentes             = [];
+  final Set<String>          _ponentesFavoritos   = {};
 
   static const _paises = [
     'Afganistán', 'Albania', 'Alemania', 'Andorra', 'Angola',
@@ -105,66 +100,53 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
     final sb   = Supabase.instance.client;
     final user = sb.auth.currentUser;
     if (user == null) {
-      if (mounted) context.go('/agenda');
+      if (mounted) context.go(AppRoutes.agenda);
       return;
     }
 
     _email = user.email ?? '';
-    final meta = user.userMetadata;
-    _authNombre = [
-      meta?['nombre'] as String? ?? '',
-      meta?['apellido'] as String? ?? '',
-    ].where((s) => s.isNotEmpty).join(' ');
+    final meta = user.userMetadata ?? {};
 
     try {
-      // ── 1. Cargar o crear registro en usuarios ────────────────────────────
-      final existing = await sb
+      // 1. Cargar o crear registro en usuarios
+      var row = await sb
           .from('usuarios')
-          .select('*')
+          .select()
           .eq('id', user.id)
           .maybeSingle();
 
-      if (existing == null) {
+      if (row == null) {
         await sb.from('usuarios').insert({
-          'id':      user.id,
-          'nombre':  meta?['nombre'] as String? ?? '',
-          'apellido': meta?['apellido'] as String? ?? '',
-          'email':   _email,
-          'activo':  true,
-          'email_verificado': user.emailConfirmedAt != null,
-          'acepta_comunicaciones': false,
+          'id':       user.id,
+          'nombre':   meta['nombre'] as String? ?? meta['name'] as String? ?? '',
+          'apellido': meta['apellido'] as String? ?? '',
+          'email':    _email,
+          'activo':   true,
+          'email_verificado':       user.emailConfirmedAt != null,
+          'acepta_comunicaciones':  false,
         });
+        row = await sb.from('usuarios').select().eq('id', user.id).maybeSingle();
       }
 
-      final row = existing ??
-          await sb.from('usuarios').select('*').eq('id', user.id).single();
-
-      _usuarioId = row['id'] as String;
-
-      // Nombre completo desde la tabla si no lo tenemos del meta
-      if (_authNombre.isEmpty) {
-        _authNombre = [
-          row['nombre'] as String? ?? '',
-          row['apellido'] as String? ?? '',
-        ].where((s) => s.isNotEmpty).join(' ');
+      if (row != null) {
+        _nombre            = row['nombre']            as String? ?? '';
+        _apellido          = row['apellido']           as String? ?? '';
+        _telefonoCtrl.text = row['telefono_whatsapp']  as String? ?? '';
+        _profesionCtrl.text= row['profesion']           as String? ?? '';
+        _ciudadCtrl.text   = row['ciudad']              as String? ?? '';
+        _direccionCtrl.text= row['direccion']            as String? ?? '';
+        final paisDb = row['pais'] as String?;
+        if (paisDb != null && _paises.contains(paisDb)) _pais = paisDb;
       }
 
-      // Rellenar campos CRM
-      _telefonoCtrl.text  = (row['telefono']          as String?) ?? '';
-      _profesionCtrl.text = (row['profesion']          as String?) ?? '';
-      _ciudadCtrl.text    = (row['ciudad']             as String?) ?? '';
-      _direccionCtrl.text = (row['direccion_completa'] as String?) ?? '';
-      final paisDb = row['pais'] as String?;
-      if (paisDb != null && _paises.contains(paisDb)) _pais = paisDb;
-
-      // ── 2. Cargar temas ───────────────────────────────────────────────────
+      // 2. Cargar temas disponibles
       final temasData = await sb
           .from('temas')
           .select('id, nombre, slug, orden')
           .order('orden', ascending: true);
       _temas = List<Map<String, dynamic>>.from(temasData as List);
 
-      // Temas seleccionados por el usuario
+      // Temas del usuario
       final userTemas = await sb
           .from('usuario_temas')
           .select('tema_id')
@@ -173,7 +155,7 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
         _temasSeleccionados.add(t['tema_id'] as String);
       }
 
-      // ── 3. Cargar ponentes ────────────────────────────────────────────────
+      // 3. Cargar ponentes
       final ponentesData = await sb
           .from('ponentes')
           .select('id, nombre, apellido, cargo, foto_url')
@@ -198,17 +180,16 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
   Future<void> _guardar() async {
     final sb   = Supabase.instance.client;
     final user = sb.auth.currentUser;
-    if (user == null || _usuarioId == null) return;
+    if (user == null) return;
 
     setState(() => _guardando = true);
     try {
-      // Actualizar perfil CRM
       await sb.from('usuarios').update({
-        'telefono':          _telefonoCtrl.text.trim().isEmpty ? null : _telefonoCtrl.text.trim(),
+        'telefono_whatsapp': _telefonoCtrl.text.trim().isEmpty ? null : _telefonoCtrl.text.trim(),
         'profesion':         _profesionCtrl.text.trim().isEmpty ? null : _profesionCtrl.text.trim(),
         'ciudad':            _ciudadCtrl.text.trim().isEmpty ? null : _ciudadCtrl.text.trim(),
         'pais':              _pais,
-        'direccion_completa': _direccionCtrl.text.trim().isEmpty ? null : _direccionCtrl.text.trim(),
+        'direccion':         _direccionCtrl.text.trim().isEmpty ? null : _direccionCtrl.text.trim(),
       }).eq('id', user.id);
 
       // Temas: borrar y reinsertar
@@ -222,7 +203,7 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
         );
       }
 
-      if (mounted) _snack('Perfil guardado ✓', isError: false);
+      if (mounted) _snack('Perfil guardado', isError: false);
     } catch (e) {
       if (mounted) _snack('Error al guardar: $e');
     } finally {
@@ -256,7 +237,6 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
         });
       }
     } catch (e) {
-      // Revertir en caso de error
       setState(() {
         if (esFav) {
           _ponentesFavoritos.add(ponenteId);
@@ -270,7 +250,7 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
 
   Future<void> _cerrarSesion() async {
     await Supabase.instance.client.auth.signOut();
-    if (mounted) context.go('/agenda');
+    if (mounted) context.go(AppRoutes.agenda);
   }
 
   void _snack(String msg, {bool isError = true}) {
@@ -278,10 +258,9 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
       backgroundColor: isError ? Colors.redAccent : AppTheme.goldColor,
+      duration: const Duration(seconds: 2),
     ));
   }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -292,7 +271,9 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
       );
     }
 
-    final inicial = (_authNombre.isNotEmpty ? _authNombre : _email)[0].toUpperCase();
+    final nombreCompleto = [_nombre, _apellido].where((s) => s.isNotEmpty).join(' ');
+    final src     = nombreCompleto.isNotEmpty ? nombreCompleto : _email;
+    final inicial = src.isNotEmpty ? src[0].toUpperCase() : '?';
 
     return Scaffold(
       backgroundColor: AppTheme.darkBg,
@@ -303,14 +284,14 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
             style: TextStyle(color: AppTheme.textPrimary)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-          onPressed: () => context.go('/agenda'),
+          onPressed: () => context.go(AppRoutes.agenda),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
 
-          // ── Perfil básico ────────────────────────────────────────────────
+          // ── Perfil básico ──────────────────────────────────────────────────
           _seccion('Perfil', [
             Center(
               child: CircleAvatar(
@@ -324,9 +305,9 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            if (_authNombre.isNotEmpty) ...[
+            if (nombreCompleto.isNotEmpty) ...[
               Center(
-                child: Text(_authNombre,
+                child: Text(nombreCompleto,
                     style: const TextStyle(
                         color: AppTheme.textPrimary,
                         fontSize: 18,
@@ -341,17 +322,16 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
             ),
           ]),
 
-          // ── Perfil CRM ───────────────────────────────────────────────────
+          // ── Datos de contacto (CRM) ────────────────────────────────────────
           _seccion('Datos de contacto', [
-            _campo(_telefonoCtrl,  'Teléfono / WhatsApp',
+            _campo(_telefonoCtrl, 'Teléfono / WhatsApp',
                 hint: '+34 600 000 000',
                 keyboardType: TextInputType.phone),
             const SizedBox(height: 12),
             _campo(_profesionCtrl, 'Profesión',
                 hint: 'Ej: Abogado, Periodista…'),
             const SizedBox(height: 12),
-            _campo(_ciudadCtrl,    'Ciudad',
-                hint: 'Ej: Madrid'),
+            _campo(_ciudadCtrl, 'Ciudad', hint: 'Ej: Madrid'),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: _pais,
@@ -360,8 +340,10 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
               style: const TextStyle(color: AppTheme.textPrimary),
               isExpanded: true,
               items: [
-                const DropdownMenuItem(value: null, child: Text('— Selecciona —')),
-                ..._paises.map((p) => DropdownMenuItem(value: p, child: Text(p))),
+                const DropdownMenuItem<String>(
+                    value: null, child: Text('— Selecciona —')),
+                ..._paises.map((p) =>
+                    DropdownMenuItem<String>(value: p, child: Text(p))),
               ],
               onChanged: (v) => setState(() => _pais = v),
             ),
@@ -370,7 +352,7 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
                 hint: 'Calle, número, piso…', maxLines: 2),
           ]),
 
-          // ── Temas de interés ─────────────────────────────────────────────
+          // ── Temas de interés ───────────────────────────────────────────────
           _seccion('Temas de interés', [
             if (_temas.isEmpty)
               const Text('No hay temas disponibles',
@@ -384,7 +366,12 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
                   final nombre   = t['nombre'] as String? ?? '';
                   final selected = _temasSeleccionados.contains(id);
                   return FilterChip(
-                    label: Text(nombre),
+                    label: Text(nombre,
+                        style: TextStyle(
+                            color: selected
+                                ? AppTheme.goldColor
+                                : AppTheme.textSecondary,
+                            fontSize: 12)),
                     selected: selected,
                     onSelected: (v) => setState(() {
                       if (v) {
@@ -395,43 +382,36 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
                     }),
                     selectedColor: AppTheme.goldColor.withAlpha(50),
                     checkmarkColor: AppTheme.goldColor,
-                    labelStyle: TextStyle(
-                      color: selected ? AppTheme.goldColor : AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
                     backgroundColor: AppTheme.darkCard,
                     side: BorderSide(
-                      color: selected
-                          ? AppTheme.goldColor.withAlpha(150)
-                          : AppTheme.darkBorder,
-                    ),
+                        color: selected
+                            ? AppTheme.goldColor.withAlpha(150)
+                            : AppTheme.darkBorder),
                   );
                 }).toList(),
               ),
           ]),
 
-          // ── Ponentes favoritos ───────────────────────────────────────────
+          // ── Ponentes favoritos ─────────────────────────────────────────────
           _seccion('Ponentes favoritos', [
             if (_ponentes.isEmpty)
               const Text('No hay ponentes disponibles',
                   style: TextStyle(color: AppTheme.textMuted))
             else
-              ...(_ponentes.map((p) {
-                final id     = p['id'] as String;
-                final nombre = '${p['nombre'] ?? ''} ${p['apellido'] ?? ''}'.trim();
-                final cargo  = p['cargo'] as String?;
+              ..._ponentes.map((p) {
+                final id      = p['id'] as String;
+                final nombre  = '${p['nombre'] ?? ''} ${p['apellido'] ?? ''}'.trim();
+                final cargo   = p['cargo'] as String?;
                 final fotoUrl = p['foto_url'] as String?;
-                final esFav  = _ponentesFavoritos.contains(id);
+                final esFav   = _ponentesFavoritos.contains(id);
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: fotoUrl != null && fotoUrl.isNotEmpty
                       ? ClipOval(
                           child: Image.network(fotoUrl,
                               width: 40, height: 40, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _inicialAvatar(nombre)),
-                        )
-                      : _inicialAvatar(nombre),
+                              errorBuilder: (_, __, ___) => _avatarInicial(nombre)))
+                      : _avatarInicial(nombre),
                   title: Text(nombre,
                       style: const TextStyle(
                           color: AppTheme.textPrimary, fontSize: 14)),
@@ -449,12 +429,11 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
                     onPressed: () => _toggleFavorito(id),
                   ),
                 );
-              })),
+              }),
           ]),
 
           const SizedBox(height: 24),
 
-          // ── Guardar ──────────────────────────────────────────────────────
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -470,7 +449,6 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
 
           const SizedBox(height: 12),
 
-          // ── Cerrar sesión ────────────────────────────────────────────────
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -489,7 +467,7 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
     );
   }
 
-  // ── Widgets auxiliares ─────────────────────────────────────────────────────
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   Widget _seccion(String titulo, List<Widget> children) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -523,10 +501,11 @@ class _CuentaScreenState extends ConsumerState<CuentaScreen> {
         decoration: InputDecoration(labelText: label, hintText: hint),
       );
 
-  Widget _inicialAvatar(String nombre) => Container(
+  Widget _avatarInicial(String nombre) => Container(
     width: 40, height: 40,
     decoration: const BoxDecoration(
-        shape: BoxShape.circle, color: Color(0xFF222222)),
+        shape: BoxShape.circle,
+        color: Color(0xFF222222)),
     child: Center(
       child: Text(
         nombre.isNotEmpty ? nombre[0].toUpperCase() : '?',

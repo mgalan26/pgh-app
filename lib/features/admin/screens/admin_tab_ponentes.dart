@@ -207,13 +207,14 @@ class _PonenteForms_State extends State<_PonenteForms> {
   late final _fotoUrlCtrl      = TextEditingController(text: widget.ponente?.fotoUrl);
   late final _linkedinCtrl     = TextEditingController(text: widget.ponente?.linkedinUrl);
   late final _webCtrl          = TextEditingController(text: widget.ponente?.web);
+  late final _usuarioIdCtrl    = TextEditingController(text: widget.ponente?.usuarioId);
   bool _guardando = false;
 
   @override
   void dispose() {
     for (final c in [
       _nombreCtrl, _apellidoCtrl, _cargoCtrl, _organizacionCtrl,
-      _bioCtrl, _fotoUrlCtrl, _linkedinCtrl, _webCtrl,
+      _bioCtrl, _fotoUrlCtrl, _linkedinCtrl, _webCtrl, _usuarioIdCtrl,
     ]) { c.dispose(); }
     super.dispose();
   }
@@ -231,6 +232,7 @@ class _PonenteForms_State extends State<_PonenteForms> {
         'foto_url':     _empty(_fotoUrlCtrl),
         'linkedin_url': _empty(_linkedinCtrl),
         'web':          _empty(_webCtrl),
+        'usuario_id':   _empty(_usuarioIdCtrl),
       };
       final sb = Supabase.instance.client;
       if (widget.ponente == null) {
@@ -295,6 +297,9 @@ class _PonenteForms_State extends State<_PonenteForms> {
               _tf(_linkedinCtrl, 'LinkedIn URL'),
               const SizedBox(height: 10),
               _tf(_webCtrl, 'Web personal', hint: 'https://...'),
+              const SizedBox(height: 10),
+              _tf(_usuarioIdCtrl, 'UUID de usuario (opcional)',
+                  hint: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _guardando ? null : _guardar,

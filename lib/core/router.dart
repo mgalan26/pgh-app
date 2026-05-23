@@ -21,6 +21,8 @@ import 'package:pgh_app/features/admin/screens/cola_eventos_screen.dart';
 import 'package:pgh_app/features/admin/screens/ponentes_screen.dart' as admin_ponentes;
 import 'package:pgh_app/features/admin/screens/admin_crear_evento_screen.dart';
 import 'package:pgh_app/features/cuenta/cuenta_screen.dart';
+import 'package:pgh_app/features/autorizado/screens/autorizado_screen.dart';
+import 'package:pgh_app/features/autorizado/screens/solicitar_autorizacion_screen.dart';
 import 'package:pgh_app/features/shell/main_shell.dart';
 
 class AppRoutes {
@@ -45,8 +47,10 @@ class AppRoutes {
   static const colaOrganizadores   = '/admin/organizadores';
   static const colaEventos         = '/admin/eventos';
   static const adminPonentes       = '/admin/ponentes';
-  static const adminCrearEvento    = '/admin/crear-evento';
-  static const cuenta              = '/cuenta';
+  static const adminCrearEvento         = '/admin/crear-evento';
+  static const cuenta                   = '/cuenta';
+  static const autorizado               = '/autorizado';
+  static const solicitarAutorizacion    = '/solicitar-autorizacion';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -65,6 +69,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.login;
       }
       if ((loc == AppRoutes.admin || loc.startsWith('/admin/')) && !isLoggedIn) {
+        return AppRoutes.login;
+      }
+      if (loc == AppRoutes.autorizado && !isLoggedIn) {
+        return AppRoutes.login;
+      }
+      if (loc == AppRoutes.solicitarAutorizacion && !isLoggedIn) {
         return AppRoutes.login;
       }
       return null;
@@ -170,6 +180,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.cuenta,
             builder: (_, __) => const CuentaScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.autorizado,
+            builder: (_, __) => const AutorizadoScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.solicitarAutorizacion,
+            builder: (_, __) => const SolicitarAutorizacionScreen(),
           ),
         ],
       ),

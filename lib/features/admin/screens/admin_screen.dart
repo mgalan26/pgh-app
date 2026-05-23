@@ -8,6 +8,7 @@ import 'admin_tab_eventos.dart';
 import 'admin_tab_ponentes.dart';
 import 'admin_tab_entidades.dart';
 import 'admin_nuevo_evento_screen.dart';
+import 'admin_tab_autorizados.dart';
 
 class AdminScreen extends ConsumerWidget {
   const AdminScreen({super.key});
@@ -15,7 +16,7 @@ class AdminScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Builder(builder: (context) {
         final tabController = DefaultTabController.of(context);
         return AnimatedBuilder(
@@ -90,6 +91,7 @@ class AdminScreen extends ConsumerWidget {
                     Tab(icon: Icon(Icons.record_voice_over_outlined, size: 20), text: 'Ponentes'),
                     Tab(icon: Icon(Icons.business_outlined, size: 20), text: 'Entidades'),
                     Tab(icon: Icon(Icons.add_circle, size: 20), text: 'Nuevo'),
+                    Tab(icon: Icon(Icons.verified_user_outlined, size: 20), text: 'Accesos'),
                   ],
                 ),
               ),
@@ -99,6 +101,7 @@ class AdminScreen extends ConsumerWidget {
                   AdminTabPonentes(),
                   AdminTabEntidades(),
                   AdminNuevoEventoTab(),
+                  AdminTabAutorizados(),
                 ],
               ),
             );

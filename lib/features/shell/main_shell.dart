@@ -11,15 +11,21 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final location  = GoRouterState.of(context).matchedLocation;
-    final authAsync = ref.watch(authStateProvider);
-    final orgAsync  = ref.watch(organizadorProvider);
+    final location       = GoRouterState.of(context).matchedLocation;
+    final authAsync      = ref.watch(authStateProvider);
+    final orgAsync       = ref.watch(organizadorProvider);
+    final autorizadosAsync = ref.watch(usuarioAutorizadoProvider);
+    final isPonenteAsync = ref.watch(isPonenteProvider);
 
-    final isLoggedIn = authAsync.value?.session != null;
-    final email      = authAsync.value?.session?.user.email?.toLowerCase() ?? '';
-    final isAdmin    = email == 'mgalan26@gmail.com';
-    final org        = orgAsync.valueOrNull;
-    final isOrg      = org != null && org.isAprobado && !isAdmin;
+    final isLoggedIn   = authAsync.value?.session != null;
+    final email        = authAsync.value?.session?.user.email?.toLowerCase() ?? '';
+    final isAdmin      = email == 'mgalan26@gmail.com';
+    final org          = orgAsync.valueOrNull;
+    final isOrg        = org != null && org.isAprobado && !isAdmin;
+    final autorizados  = autorizadosAsync.valueOrNull ?? [];
+    final isAutorizado = autorizados.isNotEmpty && !isOrg && !isAdmin;
+    final isPanelUser  = isOrg || isAutorizado;
+    final isPonente    = isPonenteAsync.valueOrNull ?? false;
 
     // Tab activo según la ruta
     int currentTab;
@@ -27,14 +33,18 @@ class MainShell extends ConsumerWidget {
       currentTab = 1;
     } else if (location.startsWith('/ponentes')) {
       currentTab = 2;
-    } else if (location == '/cuenta') {
+    } else if (location == AppRoutes.cuenta) {
       currentTab = 3;
-    } else if (location.startsWith('/gestion')) {
+    } else if (location == AppRoutes.autorizado ||
+        location.startsWith('/autorizado') ||
+        location.startsWith('/gestion')) {
       currentTab = 4;
-    } else if (location.startsWith('/admin')) {
+    } else if (location == AppRoutes.miPerfil) {
       currentTab = 5;
+    } else if (location.startsWith('/admin')) {
+      currentTab = 6;
     } else {
-      currentTab = 0; // agenda + detalle de eventos
+      currentTab = 0;
     }
 
     return Scaffold(
@@ -58,7 +68,7 @@ class MainShell extends ConsumerWidget {
                   isEnabled: true,
                   onTap: () => context.go(AppRoutes.agenda),
                 ),
-                // 1 · Entidades (público)
+                // 1 · Entidades
                 _Tab(
                   icon: Icons.business_outlined,
                   label: 'Entidades',
@@ -66,7 +76,7 @@ class MainShell extends ConsumerWidget {
                   isEnabled: true,
                   onTap: () => context.go(AppRoutes.entidades),
                 ),
-                // 2 · Ponentes (público)
+                // 2 · Ponentes
                 _Tab(
                   icon: Icons.record_voice_over_outlined,
                   label: 'Ponentes',
@@ -74,7 +84,7 @@ class MainShell extends ConsumerWidget {
                   isEnabled: true,
                   onTap: () => context.go(AppRoutes.ponentes),
                 ),
-                // 3 · Acceder / Cuenta
+                // 3 · Cuenta / Acceder
                 _Tab(
                   icon: isLoggedIn ? Icons.person : Icons.login,
                   label: isLoggedIn ? 'Cuenta' : 'Acceder',
@@ -88,19 +98,36 @@ class MainShell extends ConsumerWidget {
                     }
                   },
                 ),
-                // 4 · Mi Entidad (solo organizer aprobado)
+                // 4 · Mi Panel (org o autorizado)
                 _Tab(
                   icon: Icons.dashboard_outlined,
                   label: 'Mi Panel',
                   isCurrent: currentTab == 4,
-                  isEnabled: isOrg,
-                  onTap: isOrg ? () => context.go(AppRoutes.misEventos) : null,
+                  isEnabled: isPanelUser,
+                  onTap: isPanelUser
+                      ? () {
+                          if (isOrg) {
+                            context.go(AppRoutes.misEventos);
+                          } else {
+                            context.go(AppRoutes.autorizado);
+                          }
+                        }
+                      : null,
                 ),
-                // 5 · Admin (solo mgalan26)
+                // 5 · Mi Perfil (solo ponente)
+                if (isPonente)
+                  _Tab(
+                    icon: Icons.mic_outlined,
+                    label: 'Mi Perfil',
+                    isCurrent: currentTab == 5,
+                    isEnabled: true,
+                    onTap: () => context.go(AppRoutes.miPerfil),
+                  ),
+                // 6 · Admin
                 _Tab(
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Admin',
-                  isCurrent: currentTab == 5,
+                  isCurrent: currentTab == 6,
                   isEnabled: isAdmin,
                   onTap: isAdmin ? () => context.go(AppRoutes.admin) : null,
                 ),

@@ -57,3 +57,28 @@ final isOrganizadorAprobadoProvider = FutureProvider<bool>((ref) async {
   final org = await ref.watch(organizadorProvider.future);
   return org?.isAprobado ?? false;
 });
+
+final usuarioAutorizadoProvider =
+    FutureProvider<List<UsuarioAutorizado>>((ref) async {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return [];
+  final supabase = ref.watch(supabaseProvider);
+  final data = await supabase
+      .from('usuarios_autorizados')
+      .select('*, entidades(*)')
+      .eq('usuario_id', userId)
+      .eq('estado', 'activo');
+  return (data as List).map((e) => UsuarioAutorizado.fromJson(e)).toList();
+});
+
+final isPonenteProvider = FutureProvider<bool>((ref) async {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return false;
+  final supabase = ref.watch(supabaseProvider);
+  final data = await supabase
+      .from('ponentes')
+      .select('id')
+      .eq('usuario_id', userId)
+      .maybeSingle();
+  return data != null;
+});;

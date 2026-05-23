@@ -165,6 +165,7 @@ class Ponente {
   final DateTime createdAt;
   final String? rolEnEvento;
   final int ordenEnEvento;
+  final String? usuarioId;
 
   const Ponente({
     required this.id,
@@ -179,6 +180,7 @@ class Ponente {
     required this.createdAt,
     this.rolEnEvento,
     this.ordenEnEvento = 0,
+    this.usuarioId,
   });
 
   String get nombreCompleto => '$nombre $apellido';
@@ -196,6 +198,7 @@ class Ponente {
     createdAt:     DateTime.parse(json['created_at']),
     rolEnEvento:   json['rol'],
     ordenEnEvento: json['orden'] ?? 0,
+    usuarioId:     json['usuario_id'],
   );
 }
 
@@ -421,6 +424,12 @@ class Usuario {
   final DateTime createdAt;
   final DateTime? ultimoAcceso;
   final List<Tema> temas;
+  // CRM fields
+  final String? telefonoWhatsapp;
+  final String? profesion;
+  final String? ciudad;
+  final String? pais;
+  final String? direccion;
 
   const Usuario({
     required this.id,
@@ -433,15 +442,20 @@ class Usuario {
     required this.createdAt,
     this.ultimoAcceso,
     this.temas = const [],
+    this.telefonoWhatsapp,
+    this.profesion,
+    this.ciudad,
+    this.pais,
+    this.direccion,
   });
 
   String get nombreCompleto => '$nombre $apellido';
 
   factory Usuario.fromJson(Map<String, dynamic> json) => Usuario(
     id:                   json['id'],
-    nombre:               json['nombre'],
-    apellido:             json['apellido'],
-    email:                json['email'],
+    nombre:               json['nombre'] ?? '',
+    apellido:             json['apellido'] ?? '',
+    email:                json['email'] ?? '',
     activo:               json['activo'] ?? true,
     emailVerificado:      json['email_verificado'] ?? false,
     aceptaComunicaciones: json['acepta_comunicaciones'] ?? false,
@@ -449,7 +463,51 @@ class Usuario {
     ultimoAcceso:         json['ultimo_acceso'] != null
                             ? DateTime.parse(json['ultimo_acceso'])
                             : null,
+    telefonoWhatsapp:     json['telefono_whatsapp'],
+    profesion:            json['profesion'],
+    ciudad:               json['ciudad'],
+    pais:                 json['pais'],
+    direccion:            json['direccion'],
   );
+}
+
+class UsuarioAutorizado {
+  final String id;
+  final String usuarioId;
+  final String? email;
+  final String entidadId;
+  final String estado; // pendiente, activo, rechazado
+  final String? nota;
+  final DateTime createdAt;
+  final Entidad? entidad;
+
+  const UsuarioAutorizado({
+    required this.id,
+    required this.usuarioId,
+    this.email,
+    required this.entidadId,
+    required this.estado,
+    this.nota,
+    required this.createdAt,
+    this.entidad,
+  });
+
+  bool get isActivo    => estado == 'activo';
+  bool get isPendiente => estado == 'pendiente';
+
+  factory UsuarioAutorizado.fromJson(Map<String, dynamic> json) =>
+      UsuarioAutorizado(
+        id:        json['id'],
+        usuarioId: json['usuario_id'],
+        email:     json['email'],
+        entidadId: json['entidad_id'],
+        estado:    json['estado'],
+        nota:      json['nota'],
+        createdAt: DateTime.parse(json['created_at']),
+        entidad:   json['entidades'] != null
+                     ? Entidad.fromJson(json['entidades'] as Map<String, dynamic>)
+                     : null,
+      );
 }
 
 class Tema {
