@@ -13,13 +13,13 @@ final tabEventosProvider =
       .from('eventos')
       .select(
           'id, nombre, descripcion, fecha_inicio, hora_inicio, '
-          'ciudad, pais, estado, tipo, ponente_id, organizador_id, '
+          'ciudad, pais, estado, tipo, ponente_id, '
           'nota_moderacion, entidad_id, '
           'tiene_presencial, tiene_streaming, url_online, '
           'venue_nombre_libre, es_gratuito, url_reserva, '
           'portada_url, email_contacto, enlace_web, '
           'coorganizador_nombre, coorganizador_web, '
-          'organizadores(nombre, apellido, entidades(nombre)), '
+          'entidades(nombre), '
           'ponentes(id, nombre, apellido, cargo)')
       .order('fecha_inicio', ascending: false);
   return List<Map<String, dynamic>>.from(data as List);
@@ -171,9 +171,8 @@ class _EventoCardState extends State<_EventoCard> {
     final pais   = widget.evento['pais']   as String? ?? '';
     final color  = _colorEstado(estado);
 
-    final org     = widget.evento['organizadores'] as Map<String, dynamic>?;
-    final entidad = org?['entidades'] as Map<String, dynamic>?;
-    final ponente = widget.evento['ponentes']     as Map<String, dynamic>?;
+    final entidad = widget.evento['entidades'] as Map<String, dynamic>?;
+    final ponente = widget.evento['ponentes']  as Map<String, dynamic>?;
 
     final nota = widget.evento['nota_moderacion'] as String?;
 
@@ -272,10 +271,10 @@ class _EventoCardState extends State<_EventoCard> {
           // ── Sección expandida ───────────────────────────────────────────────
           if (_expandida) ...[
             const Divider(color: AppTheme.darkBorder, height: 1),
-            if (org == null && ponente == null)
+            if (entidad == null && ponente == null)
               const Padding(
                 padding: EdgeInsets.all(12),
-                child: Text('Sin organizador ni ponente asignados',
+                child: Text('Sin entidad ni ponente asignados',
                     style: TextStyle(
                         color: AppTheme.textMuted, fontSize: 12)),
               )
@@ -285,18 +284,12 @@ class _EventoCardState extends State<_EventoCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (org != null)
+                    if (entidad != null)
                       _infoRow(
                         Icons.business_outlined,
-                        [
-                          '${org['nombre'] ?? ''} ${org['apellido'] ?? ''}'
-                              .trim(),
-                          entidad?['nombre'] as String?,
-                        ]
-                            .where((s) => s != null && s.isNotEmpty)
-                            .join(' · '),
+                        entidad['nombre'] as String? ?? '',
                       ),
-                    if (org != null && ponente != null)
+                    if (entidad != null && ponente != null)
                       const SizedBox(height: 6),
                     if (ponente != null)
                       _infoRow(
@@ -1009,14 +1002,12 @@ class _FormNuevoEventoState extends State<_FormNuevoEvento> {
   String? _pais          = 'España';
   String? _estado        = 'publicado';
   String? _ponenteId;
-  String? _organizadorId;
   DateTime? _fechaInicio;
   TimeOfDay? _horaInicio;
   bool _guardando = false;
 
   // Carga dinámica
   List<Map<String, dynamic>>? _ponentes;
-  List<Map<String, dynamic>>? _organizadores;
 
   @override
   void initState() {
@@ -1025,22 +1016,13 @@ class _FormNuevoEventoState extends State<_FormNuevoEvento> {
   }
 
   Future<void> _cargarDatos() async {
-    final sb = Supabase.instance.client;
-    final results = await Future.wait([
-      sb
-          .from('ponentes')
-          .select('id, nombre, apellido, cargo')
-          .order('apellido', ascending: true),
-      sb
-          .from('organizadores')
-          .select('id, nombre, apellido, entidades(nombre)')
-          .eq('estado', 'aprobado')
-          .order('apellido', ascending: true),
-    ]);
+    final data = await Supabase.instance.client
+        .from('ponentes')
+        .select('id, nombre, apellido, cargo')
+        .order('apellido', ascending: true);
     if (mounted) {
       setState(() {
-        _ponentes      = List<Map<String, dynamic>>.from(results[0] as List);
-        _organizadores = List<Map<String, dynamic>>.from(results[1] as List);
+        _ponentes = List<Map<String, dynamic>>.from(data as List);
       });
     }
   }
@@ -1117,7 +1099,6 @@ class _FormNuevoEventoState extends State<_FormNuevoEvento> {
               '${_horaInicio!.minute.toString().padLeft(2, '0')}'
             : null,
         'ponente_id':       _ponenteId,
-        'organizador_id':   _organizadorId,
         'email_contacto':   _emailCtrl.text.trim().isEmpty
                               ? null
                               : _emailCtrl.text.trim(),
@@ -1246,37 +1227,6 @@ class _FormNuevoEventoState extends State<_FormNuevoEvento> {
                 onChanged: (v) => setState(() => _pais = v),
                 validator: (v) => v == null ? 'Selecciona un país' : null,
               ),
-              const SizedBox(height: 10),
-              // Organizador (carga dinámica)
-              if (_organizadores == null)
-                const LinearProgressIndicator()
-              else
-                DropdownButtonFormField<String>(
-                  value: _organizadorId,
-                  decoration:
-                      const InputDecoration(labelText: 'Organizador'),
-                  dropdownColor: AppTheme.darkCard,
-                  style: const TextStyle(color: AppTheme.textPrimary),
-                  isExpanded: true,
-                  items: [
-                    const DropdownMenuItem(
-                        value: null, child: Text('— Sin asignar —')),
-                    ..._organizadores!.map((o) {
-                      final entidadNombre =
-                          (o['entidades'] as Map?)?['nombre'] as String?;
-                      final nombre =
-                          '${o['nombre'] ?? ''} ${o['apellido'] ?? ''}'
-                              .trim();
-                      return DropdownMenuItem(
-                        value: o['id'] as String,
-                        child: Text(entidadNombre != null
-                            ? '$nombre · $entidadNombre'
-                            : nombre),
-                      );
-                    }),
-                  ],
-                  onChanged: (v) => setState(() => _organizadorId = v),
-                ),
               const SizedBox(height: 10),
               // Ponente (carga dinámica)
               if (_ponentes == null)
