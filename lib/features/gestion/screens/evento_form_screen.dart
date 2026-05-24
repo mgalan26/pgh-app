@@ -135,7 +135,7 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
   // Drag-and-drop / paste
   bool _draggingOver = false;
   int  _dragCounter  = 0;
-  StreamSubscription<html.Event>?      _pasteSub;
+  html.EventListener?                  _pasteHandler;
   StreamSubscription<html.MouseEvent>? _dragEnterSub;
   StreamSubscription<html.MouseEvent>? _dragLeaveSub;
   StreamSubscription<html.MouseEvent>? _dragOverSub;
@@ -150,7 +150,8 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
     if (widget.eventoId != null) _cargarEvento();
 
     // Listeners web: paste y drag-and-drop
-    _pasteSub     = html.document.onPaste.listen(_onPaste);
+    _pasteHandler = (html.Event e) => _onPaste(e);
+    html.document.addEventListener('paste', _pasteHandler!, true); // capture phase
     _dragEnterSub = html.window.onDragEnter.listen(_onDragEnter);
     _dragLeaveSub = html.window.onDragLeave.listen(_onDragLeave);
     _dragOverSub  = html.window.onDragOver.listen((e) => e.preventDefault());
@@ -236,7 +237,9 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
       _urlOnlineCtrl, _urlReservaCtrl, _emailContactoCtrl, _enlaceWebCtrl,
       _coorgNombreCtrl, _coorgWebCtrl,
     ]) { c.dispose(); }
-    _pasteSub?.cancel();
+    if (_pasteHandler != null) {
+      html.document.removeEventListener('paste', _pasteHandler!, true);
+    }
     _dragEnterSub?.cancel();
     _dragLeaveSub?.cancel();
     _dragOverSub?.cancel();
