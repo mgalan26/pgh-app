@@ -60,62 +60,6 @@ class Entidad {
   );
 }
 
-enum EstadoRegistro { pendiente, aprobado, rechazado, suspendido }
-enum RolUsuario { organizador, editor, admin }
-
-class Organizador {
-  final String id;
-  final String nombre;
-  final String apellido;
-  final String email;
-  final String? telefono;
-  final String? cargo;
-  final String? avatarUrl;
-  final String? linkedinUrl;
-  final String entidadId;
-  final RolUsuario rol;
-  final EstadoRegistro estado;
-  final DateTime createdAt;
-  final Entidad? entidad;
-
-  const Organizador({
-    required this.id,
-    required this.nombre,
-    required this.apellido,
-    required this.email,
-    this.telefono,
-    this.cargo,
-    this.avatarUrl,
-    this.linkedinUrl,
-    required this.entidadId,
-    required this.rol,
-    required this.estado,
-    required this.createdAt,
-    this.entidad,
-  });
-
-  String get nombreCompleto => '$nombre $apellido';
-  bool get isAprobado => estado == EstadoRegistro.aprobado;
-  bool get isAdmin => rol == RolUsuario.admin || rol == RolUsuario.editor;
-
-  factory Organizador.fromJson(Map<String, dynamic> json) => Organizador(
-    id:          json['id'],
-    nombre:      json['nombre'],
-    apellido:    json['apellido'],
-    email:       json['email'],
-    telefono:    json['telefono'],
-    cargo:       json['cargo'],
-    avatarUrl:   json['avatar_url'],
-    linkedinUrl: json['linkedin_url'],
-    entidadId:   json['entidad_id'],
-    rol:         RolUsuario.values.byName(json['rol']),
-    estado:      EstadoRegistro.values.byName(json['estado']),
-    createdAt:   DateTime.parse(json['created_at']),
-    entidad:     json['entidades'] != null
-                   ? Entidad.fromJson(json['entidades'] as Map<String, dynamic>)
-                   : null,
-  );
-}
 
 class Venue {
   final String id;

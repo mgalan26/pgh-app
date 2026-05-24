@@ -31,7 +31,7 @@ class PonentesScreen extends ConsumerWidget {
         title: const Text('Ponentes'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/admin/organizadores'),
+          onPressed: () => context.go('/admin'),
         ),
         actions: [
           IconButton(

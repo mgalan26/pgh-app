@@ -45,32 +45,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     final emailLower = email.toLowerCase();
 
-    // Admin: va a agenda (el tab admin se ilumina solo)
+    // Admin
     if (emailLower == 'mgalan26@gmail.com') {
       context.go(AppRoutes.agenda);
       return;
     }
 
-    // Comprobar si tiene perfil de organizador
-    final org = await ref.read(organizadorProvider.future);
+    // Usuario autorizado → panel autorizado
+    final autorizados = await ref.read(usuarioAutorizadoProvider.future);
     if (!mounted) return;
-
-    if (org == null) {
-      // Sin perfil: va a agenda como espectador
-      context.go(AppRoutes.agenda);
+    if (autorizados.isNotEmpty) {
+      context.go(AppRoutes.autorizado);
       return;
     }
 
-    switch (org.estado.name) {
-      case 'pendiente':
-        context.go(AppRoutes.esperaAprobacion);
-      case 'aprobado':
-        // Va a agenda (el tab entidad se ilumina solo)
-        context.go(AppRoutes.agenda);
-      default:
-        _snack('Tu cuenta ha sido ${org.estado.name}. Contacta con el administrador.');
-        await Supabase.instance.client.auth.signOut();
-    }
+    // Sin acceso especial → agenda como espectador
+    context.go(AppRoutes.agenda);
   }
 
   Future<void> _login() async {

@@ -28,7 +28,7 @@ class AdminScreen extends ConsumerWidget {
             VoidCallback? onTap;
             if (tab == 0) {
               label = 'Nuevo evento';
-              onTap = () => context.go(AppRoutes.crearEvento);
+              onTap = () => context.go(AppRoutes.adminCrearEvento);
             } else if (tab == 1) {
               label = 'Nuevo ponente';
               onTap = () => AdminTabPonentes.abrirForm(context, ref, ponente: null);

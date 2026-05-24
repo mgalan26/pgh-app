@@ -26,23 +26,17 @@ class ShellScreen extends ConsumerWidget {
       ),
       if (isAdmin) ...[
         const _TabItem(
-          label: 'Organizadores',
-          icon: Icons.people_outline,
-          activeIcon: Icons.people,
-          route: AppRoutes.colaOrganizadores,
-        ),
-        const _TabItem(
-          label: 'Eventos',
-          icon: Icons.event_note_outlined,
-          activeIcon: Icons.event_note,
-          route: AppRoutes.colaEventos,
+          label: 'Admin',
+          icon: Icons.admin_panel_settings_outlined,
+          activeIcon: Icons.admin_panel_settings,
+          route: AppRoutes.admin,
         ),
       ] else if (isLoggedIn) ...[
         const _TabItem(
-          label: 'Mis eventos',
+          label: 'Mi Panel',
           icon: Icons.dashboard_outlined,
           activeIcon: Icons.dashboard,
-          route: AppRoutes.misEventos,
+          route: AppRoutes.autorizado,
         ),
       ] else ...[
         const _TabItem(

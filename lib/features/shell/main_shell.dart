@@ -11,21 +11,16 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final location       = GoRouterState.of(context).matchedLocation;
-    final authAsync      = ref.watch(authStateProvider);
-    final orgAsync       = ref.watch(organizadorProvider);
+    final location         = GoRouterState.of(context).matchedLocation;
+    final authAsync        = ref.watch(authStateProvider);
     final autorizadosAsync = ref.watch(usuarioAutorizadoProvider);
-    final isPonenteAsync = ref.watch(isPonenteProvider);
 
     final isLoggedIn   = authAsync.value?.session != null;
     final email        = authAsync.value?.session?.user.email?.toLowerCase() ?? '';
     final isAdmin      = email == 'mgalan26@gmail.com';
-    final org          = orgAsync.valueOrNull;
-    final isOrg        = org != null && org.isAprobado && !isAdmin;
     final autorizados  = autorizadosAsync.valueOrNull ?? [];
-    final isAutorizado = autorizados.isNotEmpty && !isOrg && !isAdmin;
-    final isPanelUser  = isOrg || isAutorizado;
-    final isPonente    = isPonenteAsync.valueOrNull ?? false;
+    final isAutorizado = autorizados.isNotEmpty;
+    final isPanelUser  = isAdmin || isAutorizado;
 
     // Tab activo según la ruta
     int currentTab;
@@ -36,13 +31,10 @@ class MainShell extends ConsumerWidget {
     } else if (location == AppRoutes.cuenta) {
       currentTab = 3;
     } else if (location == AppRoutes.autorizado ||
-        location.startsWith('/autorizado') ||
-        location.startsWith('/gestion')) {
+        location.startsWith('/autorizado')) {
       currentTab = 4;
-    } else if (location == AppRoutes.miPerfil) {
-      currentTab = 5;
     } else if (location.startsWith('/admin')) {
-      currentTab = 6;
+      currentTab = 5;
     } else {
       currentTab = 0;
     }
@@ -98,36 +90,21 @@ class MainShell extends ConsumerWidget {
                     }
                   },
                 ),
-                // 4 · Mi Panel (org o autorizado)
+                // 4 · Mi Panel (admin o autorizado)
                 _Tab(
                   icon: Icons.dashboard_outlined,
                   label: 'Mi Panel',
                   isCurrent: currentTab == 4,
                   isEnabled: isPanelUser,
                   onTap: isPanelUser
-                      ? () {
-                          if (isOrg) {
-                            context.go(AppRoutes.misEventos);
-                          } else {
-                            context.go(AppRoutes.autorizado);
-                          }
-                        }
+                      ? () => context.go(AppRoutes.autorizado)
                       : null,
                 ),
-                // 5 · Mi Perfil (solo ponente)
-                if (isPonente)
-                  _Tab(
-                    icon: Icons.mic_outlined,
-                    label: 'Mi Perfil',
-                    isCurrent: currentTab == 5,
-                    isEnabled: true,
-                    onTap: () => context.go(AppRoutes.miPerfil),
-                  ),
-                // 6 · Admin
+                // 5 · Admin
                 _Tab(
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Admin',
-                  isCurrent: currentTab == 6,
+                  isCurrent: currentTab == 5,
                   isEnabled: isAdmin,
                   onTap: isAdmin ? () => context.go(AppRoutes.admin) : null,
                 ),

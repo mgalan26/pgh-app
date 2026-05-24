@@ -572,20 +572,13 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
       return;
     }
 
-    final org = _isAdmin ? null : await ref.read(organizadorProvider.future);
-    if (!_isAdmin && org == null) {
-      _snack('No se encontró el perfil de organizador');
-      return;
-    }
-
     final estadoFinal = _isAdmin ? 'publicado' : estado;
 
     setState(() => _guardando = true);
     try {
       final supabase = ref.read(supabaseProvider);
       final payload = {
-        'organizador_id':      _isAdmin ? null : org!.id,
-        'entidad_id':          _isAdmin ? _entidadIdSeleccionada : org!.entidadId,
+        'entidad_id':          _entidadIdSeleccionada,
         'nombre':              _nombreCtrl.text.trim(),
         'tipo':                _tipo,
         'descripcion':         _descripcionCtrl.text.trim().isEmpty
@@ -639,7 +632,6 @@ class _EventoFormScreenState extends ConsumerState<EventoFormScreen> {
       if (widget.eventoId == null) {
         await supabase.from('eventos').insert(payload);
       } else {
-        payload.remove('organizador_id');
         payload.remove('entidad_id');
         payload.remove('visitas');
         await supabase.from('eventos').update(payload).eq('id', widget.eventoId!);

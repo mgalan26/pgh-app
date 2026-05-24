@@ -9,14 +9,7 @@ import 'package:pgh_app/features/agenda/screens/ponente_detalle_screen.dart';
 import 'package:pgh_app/features/agenda/screens/entidad_detalle_screen.dart';
 import 'package:pgh_app/features/auth/screens/login_screen.dart';
 import 'package:pgh_app/features/auth/screens/registro_usuario_screen.dart';
-import 'package:pgh_app/features/auth/screens/registro_organizador_screen.dart';
-import 'package:pgh_app/features/auth/screens/espera_aprobacion_screen.dart';
-import 'package:pgh_app/features/gestion/screens/mis_eventos_screen.dart';
-import 'package:pgh_app/features/gestion/screens/evento_form_screen.dart';
-import 'package:pgh_app/features/gestion/screens/mi_entidad_screen.dart';
-import 'package:pgh_app/features/gestion/screens/mi_perfil_screen.dart';
 import 'package:pgh_app/features/admin/screens/admin_screen.dart';
-import 'package:pgh_app/features/admin/screens/cola_organizadores_screen.dart';
 import 'package:pgh_app/features/admin/screens/cola_eventos_screen.dart';
 import 'package:pgh_app/features/admin/screens/ponentes_screen.dart' as admin_ponentes;
 import 'package:pgh_app/features/admin/screens/admin_crear_evento_screen.dart';
@@ -36,21 +29,15 @@ class AppRoutes {
   static const loginEntidad        = '/login/entidad';
   static const loginAdmin          = '/login/admin';
   static const registroUsuario     = '/registro/usuario';
-  static const registroOrganizador = '/registro/organizador';
-  static const esperaAprobacion    = '/espera-aprobacion';
-  static const misEventos          = '/gestion/eventos';
-  static const crearEvento         = '/gestion/eventos/nuevo';
-  static const editarEvento        = '/gestion/eventos/:id/editar';
-  static const miEntidad           = '/gestion/entidad';
-  static const miPerfil            = '/gestion/perfil';
   static const admin               = '/admin';
-  static const colaOrganizadores   = '/admin/organizadores';
   static const colaEventos         = '/admin/eventos';
   static const adminPonentes       = '/admin/ponentes';
-  static const adminCrearEvento         = '/admin/crear-evento';
-  static const cuenta                   = '/cuenta';
-  static const autorizado               = '/autorizado';
-  static const solicitarAutorizacion    = '/solicitar-autorizacion';
+  static const adminCrearEvento    = '/admin/crear-evento';
+  static const cuenta              = '/cuenta';
+  static const autorizado          = '/autorizado';
+  static const solicitarAutorizacion = '/solicitar-autorizacion';
+  // kept for ponente profile (future use)
+  static const miPerfil            = '/gestion/perfil';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -63,9 +50,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (loc == '/') return AppRoutes.agenda;
       final isLoggedIn = authState.value?.session != null;
       if (loc == AppRoutes.cuenta && !isLoggedIn) {
-        return AppRoutes.login;
-      }
-      if (loc.startsWith('/gestion') && !isLoggedIn) {
         return AppRoutes.login;
       }
       if ((loc == AppRoutes.admin || loc.startsWith('/admin/')) && !isLoggedIn) {
@@ -97,14 +81,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.registroUsuario,
         builder: (_, __) => const RegistroUsuarioScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.registroOrganizador,
-        builder: (_, __) => const RegistroOrganizadorScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.esperaAprobacion,
-        builder: (_, __) => const EsperaAprobacionScreen(),
-      ),
 
       // ── Shell con bottom nav ──────────────────────────────────────────────
       ShellRoute(
@@ -135,35 +111,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.entidadDetalle,
             builder: (_, s) => EntidadDetalleScreen(id: s.pathParameters['id']!),
           ),
-          // Gestión (organizers)
-          GoRoute(
-            path: AppRoutes.misEventos,
-            builder: (_, __) => const MisEventosScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.crearEvento,
-            builder: (_, __) => const EventoFormScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.editarEvento,
-            builder: (_, s) => EventoFormScreen(eventoId: s.pathParameters['id']),
-          ),
-          GoRoute(
-            path: AppRoutes.miEntidad,
-            builder: (_, __) => const MiEntidadScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.miPerfil,
-            builder: (_, __) => const MiPerfilScreen(),
-          ),
           // Admin
           GoRoute(
             path: AppRoutes.admin,
             builder: (_, __) => const AdminScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.colaOrganizadores,
-            builder: (_, __) => const ColaOrganizadoresScreen(),
           ),
           GoRoute(
             path: AppRoutes.colaEventos,

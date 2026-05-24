@@ -49,7 +49,7 @@ class ColaEventosScreen extends ConsumerWidget {
         title: const Text('Eventos'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go(AppRoutes.colaOrganizadores),
+          onPressed: () => context.go(AppRoutes.admin),
         ),
         actions: [
           IconButton(
