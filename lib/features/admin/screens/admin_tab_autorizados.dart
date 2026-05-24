@@ -1,9 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:pgh_app/core/env.dart';
 import 'package:pgh_app/core/theme.dart';
 
 // ─── Providers ────────────────────────────────────────────────────────────────
@@ -437,36 +434,12 @@ class _FormInvitarUsuarioState extends ConsumerState<_FormInvitarUsuario> {
     try {
       final email = _emailCtrl.text.trim();
 
-      // 1. Invitar usuario via Supabase Admin API
-      final inviteRes = await http.post(
-        Uri.parse('${Env.supabaseUrl}/auth/v1/invite'),
-        headers: {
-          'Content-Type':  'application/json',
-          'apikey':        Env.supabaseAnonKey,
-          'Authorization': 'Bearer ${Env.supabaseServiceKey}',
-        },
-        body: jsonEncode({'email': email}),
+      // Invitar usuario via Edge Function
+      final res = await Supabase.instance.client.functions.invoke(
+        'invite-user',
+        body: {'email': email, 'entidad_id': _entidadId},
       );
-
-      final inviteData = jsonDecode(inviteRes.body) as Map<String, dynamic>;
-      if (inviteRes.statusCode != 200) {
-        final msg = inviteData['msg'] as String?
-            ?? inviteData['message'] as String?
-            ?? inviteData['error_description'] as String?
-            ?? 'Error al invitar (${inviteRes.statusCode})';
-        throw Exception(msg);
-      }
-
-      final userId = inviteData['id'] as String?;
-      if (userId == null) throw Exception('No se obtuvo ID de usuario');
-
-      // 2. Insertar en usuarios_autorizados como activo (invitado por admin)
-      await Supabase.instance.client.from('usuarios_autorizados').insert({
-        'usuario_id': userId,
-        'email':      email,
-        'entidad_id': _entidadId,
-        'estado':     'activo',
-      });
+      if (res.data?['ok'] != true) throw Exception(res.data?['error'] ?? 'Error');
 
       widget.onInvitado();
       if (mounted) {
