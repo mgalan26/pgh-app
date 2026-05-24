@@ -9,6 +9,7 @@ import 'package:pgh_app/features/agenda/screens/ponente_detalle_screen.dart';
 import 'package:pgh_app/features/agenda/screens/entidad_detalle_screen.dart';
 import 'package:pgh_app/features/auth/screens/login_screen.dart';
 import 'package:pgh_app/features/auth/screens/registro_usuario_screen.dart';
+import 'package:pgh_app/features/auth/screens/set_password_screen.dart';
 import 'package:pgh_app/features/admin/screens/admin_screen.dart';
 import 'package:pgh_app/features/admin/screens/cola_eventos_screen.dart';
 import 'package:pgh_app/features/admin/screens/ponentes_screen.dart' as admin_ponentes;
@@ -36,6 +37,7 @@ class AppRoutes {
   static const cuenta              = '/cuenta';
   static const autorizado          = '/autorizado';
   static const solicitarAutorizacion = '/solicitar-autorizacion';
+  static const setPassword           = '/set-password';
   // kept for ponente profile (future use)
   static const miPerfil            = '/gestion/perfil';
 }
@@ -61,6 +63,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (loc == AppRoutes.solicitarAutorizacion && !isLoggedIn) {
         return AppRoutes.login;
       }
+      if (loc == AppRoutes.setPassword && !isLoggedIn) {
+        return AppRoutes.login;
+      }
       return null;
     },
     routes: [
@@ -80,6 +85,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.registroUsuario,
         builder: (_, __) => const RegistroUsuarioScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.setPassword,
+        builder: (_, __) => const SetPasswordScreen(),
       ),
 
       // ── Shell con bottom nav ──────────────────────────────────────────────

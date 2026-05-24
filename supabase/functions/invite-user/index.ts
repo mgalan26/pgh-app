@@ -42,7 +42,9 @@ serve(async (req) => {
     let invited: boolean
 
     const { data: inviteData, error: inviteError } =
-      await supabase.auth.admin.inviteUserByEmail(email)
+      await supabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: 'https://agenda.appgh.net/set-password',
+      })
 
     if (!inviteError) {
       // Usuario nuevo — invitación enviada correctamente
