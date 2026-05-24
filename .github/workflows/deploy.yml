@@ -32,14 +32,12 @@ jobs:
       - name: Build web
         run: flutter build web --release
 
-      - name: Deploy via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          port: 22
-          local_path: './build/web/*'
-          remote_path: '/public_html'
-          sftp_only: true
-          delete_remote_files: true
+          local-dir: build/web/
+          server-dir: public_html/
+          dangerous-clean-slate: true
