@@ -20,7 +20,6 @@ final eventoDetalleProvider =
   if (data == null) return null;
 
   final entidad = data['entidades'] as Map<String, dynamic>?;
-  final ponenteData = data['ponentes'] as Map<String, dynamic>?;
 
   return Evento.fromJson({
     ...data,
@@ -40,58 +39,28 @@ class EventoDetalleScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(eventoDetalleProvider(id));
 
-    return async.when(
-      loading: () => Scaffold(
-        backgroundColor: const Color(0xFF0D0D0D),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF0D0D0D),
-          leading: _backButton(context),
-        ),
-        body: const Center(
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0D0D),
+      body: async.when(
+        loading: () => const Center(
           child: CircularProgressIndicator(color: Color(0xFFC9A84C)),
         ),
-      ),
-      error: (e, _) => Scaffold(
-        backgroundColor: const Color(0xFF0D0D0D),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF0D0D0D),
-          leading: _backButton(context),
-        ),
-        body: Center(
+        error: (e, _) => Center(
           child: Text('Error: $e',
               style: const TextStyle(color: Colors.redAccent)),
         ),
-      ),
-      data: (evento) {
-        if (evento == null) {
-          return Scaffold(
-            backgroundColor: const Color(0xFF0D0D0D),
-            appBar: AppBar(
-              backgroundColor: const Color(0xFF0D0D0D),
-              leading: _backButton(context),
-            ),
-            body: const Center(
+        data: (evento) {
+          if (evento == null) {
+            return const Center(
               child: Text('Evento no encontrado',
                   style: TextStyle(color: Color(0xFF888888))),
-            ),
-          );
-        }
-        return _EventoDetalleBody(evento: evento);
-      },
+            );
+          }
+          return _EventoDetalleBody(evento: evento);
+        },
+      ),
     );
   }
-
-  Widget _backButton(BuildContext context) => Padding(
-        padding: const EdgeInsets.all(8),
-        child: CircleAvatar(
-          backgroundColor: Colors.black54,
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
-            onPressed: () =>
-                context.canPop() ? context.pop() : context.go('/agenda'),
-          ),
-        ),
-      );
 }
 
 // ─── Cuerpo ───────────────────────────────────────────────────────────────────
@@ -102,28 +71,102 @@ class _EventoDetalleBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverHeader(context),
-          SliverToBoxAdapter(
+    return Column(
+      children: [
+        // ── Mitad superior: imagen fija 340px ─────────────────────────────────
+        SizedBox(
+          height: 340,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Imagen o placeholder
+              _buildImagen(),
+              // Gradiente negro de abajo hacia arriba
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black87],
+                    stops: [0.3, 1.0],
+                  ),
+                ),
+              ),
+              // Botón volver + chips arriba izquierda
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 8,
+                left: 12,
+                right: 12,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildBackButton(context),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          _TipoChip(tipo: evento.tipo),
+                          _ModalidadBadge(evento: evento),
+                          if (evento.esGratuito) const _CosteBadge(gratuito: true),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Título, descripción y ponente superpuestos abajo
+              Positioned(
+                bottom: 16,
+                left: 16,
+                right: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      evento.nombre,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        height: 1.3,
+                      ),
+                    ),
+                    if (evento.descripcion?.isNotEmpty == true) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        evento.descripcion!,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFFCCCCCC),
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                    if (evento.ponente != null) ...[
+                      const SizedBox(height: 10),
+                      _PonenteRowInline(ponente: evento.ponente!),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // ── Mitad inferior: scrolleable ────────────────────────────────────────
+        Expanded(
+          child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildInfoPrincipal(),
-                _buildDivider(),
-                _buildDescripcion(),
-                if (evento.ponente != null) ...[
-                  _buildDivider(),
-                  _buildPonente(context),
-                ],
+                _buildFecha(),
                 _buildDivider(),
                 _buildLugar(context),
-                if (evento.coorganizadorNombre != null) ...[
-                  _buildDivider(),
-                  _buildCoorganizador(),
-                ],
                 _buildDivider(),
                 _buildEntidad(context),
                 _buildDivider(),
@@ -132,80 +175,40 @@ class _EventoDetalleBody extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSliverHeader(BuildContext context) {
-    return SliverAppBar(
-      expandedHeight: 240,
-      pinned: true,
-      backgroundColor: const Color(0xFF0D0D0D),
-      automaticallyImplyLeading: false,
-      leading: Padding(
-        padding: const EdgeInsets.all(8),
-        child: CircleAvatar(
-          backgroundColor: Colors.black54,
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
-            onPressed: () =>
-                context.canPop() ? context.pop() : context.go('/agenda'),
-          ),
-        ),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            evento.portadaUrl != null
-                ? Image.network(evento.portadaUrl!, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _placeholder())
-                : _placeholder(),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0xFF0D0D0D)],
-                  stops: [0.4, 1.0],
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 16, left: 16, right: 16,
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  _TipoChip(tipo: evento.tipo),
-                  _ModalidadBadge(evento: evento),
-                  if (evento.esGratuito) const _CosteBadge(gratuito: true),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  // ── Imagen / placeholder ───────────────────────────────────────────────────
+
+  Widget _buildImagen() {
+    if (evento.portadaUrl != null) {
+      return Image.network(
+        evento.portadaUrl!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildPlaceholder(),
+      );
+    }
+    return _buildPlaceholder();
   }
 
-  Widget _placeholder() {
-    final color = _tipoColors[evento.tipo] ?? const Color(0xFFC9A84C);
+  Widget _buildPlaceholder() {
+    final initial = evento.nombre.isNotEmpty ? evento.nombre[0] : 'E';
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [color.withOpacity(0.3), const Color(0xFF0D0D0D)],
+          colors: [Color(0xFF181818), Color(0xFF0D0D0D)],
         ),
       ),
       child: Center(
         child: Text(
-          evento.nombre.isNotEmpty ? evento.nombre[0] : 'E',
-          style: TextStyle(
-            color: color.withOpacity(0.15),
-            fontSize: 100,
+          initial,
+          style: const TextStyle(
+            color: Color(0xFF1E1E1E),
+            fontSize: 160,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -213,56 +216,55 @@ class _EventoDetalleBody extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoPrincipal() {
-    final fmt = DateFormat('EEEE, d MMMM yyyy', 'es');
-    String fecha = fmt.format(evento.fechaInicio);
-    fecha = fecha[0].toUpperCase() + fecha.substring(1);
-    if (evento.fechaFin != null && evento.fechaFin!.isAfter(evento.fechaInicio)) {
-      final fin = DateFormat('d MMMM yyyy', 'es').format(evento.fechaFin!);
-      fecha = '$fecha — $fin';
-    }
+  // ── Botón volver ───────────────────────────────────────────────────────────
+
+  Widget _buildBackButton(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.canPop() ? context.pop() : context.go('/agenda'),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.5),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.arrow_back, color: Colors.white, size: 18),
+      ),
+    );
+  }
+
+  // ── Fecha + Google Calendar ────────────────────────────────────────────────
+
+  Widget _buildFecha() {
+    final fmt   = DateFormat('d MMMM yyyy', 'es');
+    final fecha = fmt.format(evento.fechaInicio);
+    final hora  = evento.horaInicio != null
+        ? (evento.horaFin != null
+            ? '${evento.horaInicio} – ${evento.horaFin}'
+            : evento.horaInicio!)
+        : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(evento.nombre,
-            style: const TextStyle(
-              color: Color(0xFFF0E8D8),
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _InfoRow(
-            icon: Icons.calendar_today_outlined,
-            content: fecha,
-            accentColor: const Color(0xFFC9A84C),
-          ),
-          if (evento.horaInicio != null) ...[
-            const SizedBox(height: 10),
-            _InfoRow(
-              icon: Icons.access_time,
-              content: evento.horaFin != null
-                  ? '${evento.horaInicio} – ${evento.horaFin}'
-                  : evento.horaInicio!,
-            ),
-          ],
-          const SizedBox(height: 10),
-          _InfoRow(
-            icon: evento.tienePresencial && evento.tieneStreaming
-                ? Icons.devices
-                : evento.tieneStreaming
-                    ? Icons.wifi
-                    : Icons.location_on_outlined,
-            content: evento.modalidadLabel,
-          ),
-          const SizedBox(height: 10),
-          _InfoRow(
-            icon: Icons.location_city_outlined,
-            content: '${evento.ciudad}, ${evento.pais}',
+          Row(
+            children: [
+              const Icon(Icons.calendar_today_outlined,
+                  color: Color(0xFFC9A84C), size: 16),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  hora != null ? '$fecha  ·  $hora' : fecha,
+                  style: const TextStyle(
+                    color: Color(0xFFF0E8D8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           SizedBox(
@@ -285,99 +287,7 @@ class _EventoDetalleBody extends StatelessWidget {
     );
   }
 
-  Widget _buildDescripcion() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SeccionTitulo('Sobre el evento'),
-          const SizedBox(height: 10),
-          Text(
-            evento.descripcion?.isNotEmpty == true
-                ? evento.descripcion!
-                : 'Sin descripción disponible.',
-            style: const TextStyle(
-              color: Color(0xFFBBBBBB),
-              fontSize: 15,
-              height: 1.7,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPonente(BuildContext context) {
-    final p = evento.ponente!;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SeccionTitulo('Ponente'),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () => context.push('/ponentes/${p.id}'),
-            child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161616),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF222222)),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: const Color(0xFF222222),
-                  backgroundImage: p.fotoUrl != null
-                      ? NetworkImage(p.fotoUrl!) : null,
-                  child: p.fotoUrl == null
-                      ? Text(p.nombre[0],
-                          style: const TextStyle(
-                            color: Color(0xFFC9A84C),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ))
-                      : null,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(p.nombreCompleto,
-                          style: const TextStyle(
-                            color: Color(0xFFF0E8D8),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          )),
-                      if (p.cargo != null) ...[
-                        const SizedBox(height: 2),
-                        Text(p.cargo!,
-                            style: const TextStyle(
-                                color: Color(0xFF888888), fontSize: 12)),
-                      ],
-                      if (p.organizacion != null) ...[
-                        const SizedBox(height: 1),
-                        Text(p.organizacion!,
-                            style: const TextStyle(
-                                color: Color(0xFF666666), fontSize: 11)),
-                      ],
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right,
-                    color: Color(0xFF333333), size: 16),
-              ],
-            ),
-          ),
-          ),  // GestureDetector
-        ],
-      ),
-    );
-  }
+  // ── Lugar + Google Maps ────────────────────────────────────────────────────
 
   Widget _buildLugar(BuildContext context) {
     return Padding(
@@ -388,123 +298,89 @@ class _EventoDetalleBody extends StatelessWidget {
           const _SeccionTitulo('Lugar'),
           const SizedBox(height: 12),
           if (evento.tienePresencial) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF161616),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF222222)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.location_on,
-                        color: Color(0xFFC9A84C), size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(evento.venueNombre,
-                          style: const TextStyle(
-                            color: Color(0xFFF0E8D8),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          )),
-                    ),
-                  ]),
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 24),
-                    child: Text('${evento.ciudad}, ${evento.pais}',
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.location_on_outlined,
+                    color: Color(0xFF666666), size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        evento.venueNombre,
                         style: const TextStyle(
-                            color: Color(0xFF888888), fontSize: 13)),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        final url = evento.venue?.urlMapa ??
-                            'https://www.google.com/maps/search/?api=1&query='
-                            '${Uri.encodeComponent('${evento.venueNombre}, ${evento.ciudad}, ${evento.pais}')}';
-                        _abrirUrl(url);
-                      },
-                      icon: const Icon(Icons.map_outlined, size: 16),
-                      label: const Text('Ver en Google Maps'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.goldColor,
-                        side: const BorderSide(color: AppTheme.goldColor),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                          color: Color(0xFFF0E8D8),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${evento.ciudad}, ${evento.pais}',
+                        style: const TextStyle(
+                            color: Color(0xFF888888), fontSize: 13),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final url = evento.venue?.urlMapa ??
+                      'https://www.google.com/maps/search/?api=1&query='
+                      '${Uri.encodeComponent('${evento.venueNombre}, ${evento.ciudad}, ${evento.pais}')}';
+                  _abrirUrl(url);
+                },
+                icon: const Icon(Icons.map_outlined, size: 16),
+                label: const Text('Ver en Google Maps'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.goldColor,
+                  side: const BorderSide(color: AppTheme.goldColor),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
               ),
             ),
-            if (evento.tieneStreaming) const SizedBox(height: 10),
           ],
-          if (evento.tieneStreaming)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF161616),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF222222)),
+          if (evento.tieneStreaming) ...[
+            if (evento.tienePresencial) const SizedBox(height: 10),
+            Row(children: [
+              const Icon(Icons.wifi, color: Color(0xFF4C8EC9), size: 16),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text('Disponible en streaming',
+                    style: TextStyle(color: Color(0xFFF0E8D8), fontSize: 14)),
               ),
-              child: Row(children: [
-                const Icon(Icons.wifi,
-                    color: Color(0xFF4C8EC9), size: 16),
-                const SizedBox(width: 8),
-                const Expanded(
-                    child: Text('Disponible en streaming',
-                        style: TextStyle(
-                            color: Color(0xFFF0E8D8), fontSize: 14))),
-                if (evento.urlOnline != null)
-                  GestureDetector(
-                    onTap: () => _abrirUrl(evento.urlOnline!),
-                    child: const Text('Ver enlace',
-                        style: TextStyle(
-                          color: Color(0xFF4C8EC9),
-                          fontSize: 13,
-                          decoration: TextDecoration.underline,
-                        )),
-                  ),
-              ]),
+              if (evento.urlOnline != null)
+                GestureDetector(
+                  onTap: () => _abrirUrl(evento.urlOnline!),
+                  child: const Text('Ver enlace',
+                      style: TextStyle(
+                        color: Color(0xFF4C8EC9),
+                        fontSize: 13,
+                        decoration: TextDecoration.underline,
+                      )),
+                ),
+            ]),
+          ],
+          if (!evento.tienePresencial && !evento.tieneStreaming)
+            Text(
+              '${evento.ciudad}, ${evento.pais}',
+              style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildCoorganizador() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SeccionTitulo('Co-organiza'),
-          const SizedBox(height: 10),
-          Row(children: [
-            const Icon(Icons.handshake_outlined,
-                color: Color(0xFF666666), size: 16),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(evento.coorganizadorNombre!,
-                  style: const TextStyle(
-                      color: Color(0xFFCCCCCC), fontSize: 14)),
-            ),
-            if (evento.coorganizadorWeb != null)
-              GestureDetector(
-                onTap: () => _abrirUrl(evento.coorganizadorWeb!),
-                child: const Icon(Icons.open_in_new,
-                    color: Color(0xFF555555), size: 14),
-              ),
-          ]),
-        ],
-      ),
-    );
-  }
+  // ── Organiza ───────────────────────────────────────────────────────────────
 
   Widget _buildEntidad(BuildContext context) {
     return Padding(
@@ -516,16 +392,11 @@ class _EventoDetalleBody extends StatelessWidget {
           const SizedBox(height: 12),
           GestureDetector(
             onTap: () => context.push('/entidades/${evento.entidadId}'),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF161616),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF222222)),
-              ),
-              child: Row(children: [
+            child: Row(
+              children: [
                 Container(
-                  width: 44, height: 44,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: const Color(0xFF222222),
                     borderRadius: BorderRadius.circular(8),
@@ -533,42 +404,43 @@ class _EventoDetalleBody extends StatelessWidget {
                   child: evento.entidadLogoUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(evento.entidadLogoUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.business,
-                                  color: Color(0xFF555555), size: 22)))
+                          child: Image.network(
+                            evento.entidadLogoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.business,
+                                color: Color(0xFF555555), size: 20),
+                          ),
+                        )
                       : const Icon(Icons.business,
-                          color: Color(0xFF555555), size: 22),
+                          color: Color(0xFF555555), size: 20),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(children: [
-                        Expanded(
-                          child: Text(evento.entidadNombre ?? '',
-                              style: const TextStyle(
-                                color: Color(0xFFF0E8D8),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              )),
+                      Expanded(
+                        child: Text(
+                          evento.entidadNombre ?? '',
+                          style: const TextStyle(
+                            color: Color(0xFFF0E8D8),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
                         ),
-                        if (evento.entidadVerificada)
-                          const Icon(Icons.verified,
-                              color: Color(0xFFC9A84C), size: 14),
-                      ]),
-                      const SizedBox(height: 2),
-                      const Text('Ver perfil completo',
-                          style: TextStyle(
-                              color: Color(0xFF666666), fontSize: 12)),
+                      ),
+                      if (evento.entidadVerificada) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.verified,
+                            color: Color(0xFFC9A84C), size: 14),
+                      ],
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 const Icon(Icons.chevron_right,
-                    color: Color(0xFF333333), size: 18),
-              ]),
+                    color: Color(0xFF444444), size: 18),
+              ],
             ),
           ),
         ],
@@ -576,13 +448,15 @@ class _EventoDetalleBody extends StatelessWidget {
     );
   }
 
+  // ── CTA ────────────────────────────────────────────────────────────────────
+
   Widget _buildCTA() {
     String? label;
     IconData icon = Icons.open_in_new;
     String? url;
 
     if (evento.urlReserva != null) {
-      label = evento.esGratuito ? 'Reservar plaza — Gratis' : 'Comprar entrada';
+      label = evento.esGratuito ? 'Reservar gratis' : 'Comprar entrada';
       icon  = Icons.confirmation_number_outlined;
       url   = evento.urlReserva;
     } else if (evento.enlaceWeb != null) {
@@ -620,6 +494,8 @@ class _EventoDetalleBody extends StatelessWidget {
     );
   }
 
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
   void _abrirUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) await launchUrl(uri);
@@ -643,7 +519,7 @@ class _EventoDetalleBody extends StatelessWidget {
     if (evento.horaFin != null) {
       end = formatDt(evento.fechaFin ?? evento.fechaInicio, evento.horaFin);
     } else if (evento.horaInicio != null) {
-      final p = evento.horaInicio!.split(':');
+      final p  = evento.horaInicio!.split(':');
       final h  = int.parse(p[0]);
       final mi = p.length > 1 ? int.parse(p[1]) : 0;
       final endDt = DateTime(evento.fechaInicio.year, evento.fechaInicio.month,
@@ -673,32 +549,92 @@ class _EventoDetalleBody extends StatelessWidget {
       color: Color(0xFF1A1A1A), height: 1, indent: 20, endIndent: 20);
 }
 
+// ─── Ponente inline sobre imagen ──────────────────────────────────────────────
+
+class _PonenteRowInline extends StatelessWidget {
+  final Ponente ponente;
+  const _PonenteRowInline({required this.ponente});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 16,
+          backgroundColor: const Color(0xFF333333),
+          backgroundImage:
+              ponente.fotoUrl != null ? NetworkImage(ponente.fotoUrl!) : null,
+          child: ponente.fotoUrl == null
+              ? Text(
+                  ponente.nombre[0],
+                  style: const TextStyle(
+                    color: Color(0xFFC9A84C),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                )
+              : null,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                ponente.nombreCompleto,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (ponente.cargo != null)
+                Text(
+                  ponente.cargo!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFAAAAAA),
+                    fontSize: 11,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // ─── Widgets auxiliares ───────────────────────────────────────────────────────
 
 const _tipoColors = {
-  TipoEvento.conferencia:  Color(0xFF4C8EC9),
-  TipoEvento.mesaRedonda:  Color(0xFF9B59B6),
-  TipoEvento.congreso:     Color(0xFFC9A84C),
-  TipoEvento.networking:   Color(0xFF27AE60),
-  TipoEvento.cultural:     Color(0xFF8E44AD),
-  TipoEvento.academico:    Color(0xFF16A085),
-  TipoEvento.empresarial:  Color(0xFFE67E22),
-  TipoEvento.politico:     Color(0xFFC0392B),
-  TipoEvento.exposicion:   Color(0xFF2980B9),
-  TipoEvento.otro:         Color(0xFF7F8C8D),
+  TipoEvento.conferencia: Color(0xFF4C8EC9),
+  TipoEvento.mesaRedonda: Color(0xFF9B59B6),
+  TipoEvento.congreso:    Color(0xFFC9A84C),
+  TipoEvento.networking:  Color(0xFF27AE60),
+  TipoEvento.cultural:    Color(0xFF8E44AD),
+  TipoEvento.academico:   Color(0xFF16A085),
+  TipoEvento.empresarial: Color(0xFFE67E22),
+  TipoEvento.politico:    Color(0xFFC0392B),
+  TipoEvento.exposicion:  Color(0xFF2980B9),
+  TipoEvento.otro:        Color(0xFF7F8C8D),
 };
 
 const _tipoLabels = {
-  TipoEvento.conferencia:  'Conferencia',
-  TipoEvento.mesaRedonda:  'Mesa redonda',
-  TipoEvento.congreso:     'Congreso',
-  TipoEvento.networking:   'Networking',
-  TipoEvento.cultural:     'Cultural',
-  TipoEvento.academico:    'Académico',
-  TipoEvento.empresarial:  'Empresarial',
-  TipoEvento.politico:     'Político',
-  TipoEvento.exposicion:   'Exposición',
-  TipoEvento.otro:         'Otro',
+  TipoEvento.conferencia: 'Conferencia',
+  TipoEvento.mesaRedonda: 'Mesa redonda',
+  TipoEvento.congreso:    'Congreso',
+  TipoEvento.networking:  'Networking',
+  TipoEvento.cultural:    'Cultural',
+  TipoEvento.academico:   'Académico',
+  TipoEvento.empresarial: 'Empresarial',
+  TipoEvento.politico:    'Político',
+  TipoEvento.exposicion:  'Exposición',
+  TipoEvento.otro:        'Otro',
 };
 
 class _SeccionTitulo extends StatelessWidget {
@@ -714,36 +650,6 @@ class _SeccionTitulo extends StatelessWidget {
           letterSpacing: 2,
           fontWeight: FontWeight.w600,
         ),
-      );
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String content;
-  final Color? accentColor;
-  const _InfoRow(
-      {required this.icon, required this.content, this.accentColor});
-
-  @override
-  Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon,
-              color: accentColor ?? const Color(0xFF666666), size: 16),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(content,
-                style: TextStyle(
-                  color: accentColor != null
-                      ? const Color(0xFFF0E8D8)
-                      : const Color(0xFFAAAAAA),
-                  fontSize: 14,
-                  fontWeight: accentColor != null
-                      ? FontWeight.w600
-                      : FontWeight.normal,
-                )),
-          ),
-        ],
       );
 }
 
