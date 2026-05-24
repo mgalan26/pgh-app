@@ -62,7 +62,6 @@ serve(async (req) => {
       if (!alreadyExists) throw inviteError
 
       // Usuario existente — buscar su UUID
-      invited = false
       const { data: listData, error: listError } =
         await supabase.auth.admin.listUsers({ perPage: 1000 })
       if (listError) throw listError
@@ -70,6 +69,18 @@ serve(async (req) => {
       const existing = listData.users.find((u) => u.email === email)
       if (!existing) throw new Error(`No se encontró usuario con email: ${email}`)
       userId = existing.id
+
+      // Reenviar email según el estado de la cuenta:
+      //   - Sin confirmar → nueva invitación para que establezca contraseña
+      //   - Confirmada    → magic link para acceso rápido al panel restaurado
+      const isConfirmed = !!existing.email_confirmed_at
+      const linkType = isConfirmed ? 'magiclink' : 'invite'
+      const { error: linkError } = await supabase.auth.admin.generateLink({
+        type: linkType,
+        email,
+        options: { redirectTo: 'https://agenda.appgh.net/auth/callback' },
+      })
+      invited = !linkError
     }
 
     // ── Paso 2: crear perfil en usuarios si aún no existe ────────────────

@@ -60,12 +60,11 @@ final _entidadesAccesoProvider =
 
 final _usuariosProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final data = await Supabase.instance.client
-      .from('usuarios')
-      .select('id, email')
-      .neq('email', '')
-      .order('email', ascending: true);
-  return List<Map<String, dynamic>>.from(data as List)
+  // Llamamos a la Edge Function para bypassar la RLS y obtener todos
+  // los registros de usuarios (no solo los que ya tienen autorización).
+  final res = await Supabase.instance.client.functions.invoke('get-usuarios');
+  if (res.data is! List) return [];
+  return List<Map<String, dynamic>>.from(res.data as List)
       .where((u) => (u['email'] as String? ?? '').isNotEmpty)
       .toList();
 });
@@ -394,8 +393,8 @@ class _FormAnadirAccesoState extends ConsumerState<_FormAnadirAcceso> {
 
       final invited = res.data?['invited'] as bool? ?? false;
       final msg = invited
-          ? 'Invitacion enviada y acceso concedido'
-          : 'Acceso concedido al usuario existente';
+          ? 'Email enviado y acceso concedido'
+          : 'Acceso concedido (el usuario ya tiene cuenta activa)';
 
       _emailCtrl.clear();
       setState(() {
