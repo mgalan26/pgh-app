@@ -58,6 +58,18 @@ final _entidadesAccesoProvider =
   return List<Map<String, dynamic>>.from(data as List);
 });
 
+final _usuariosProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final data = await Supabase.instance.client
+      .from('usuarios')
+      .select('id, email')
+      .neq('email', '')
+      .order('email', ascending: true);
+  return List<Map<String, dynamic>>.from(data as List)
+      .where((u) => (u['email'] as String? ?? '').isNotEmpty)
+      .toList();
+});
+
 // ─── Tab ──────────────────────────────────────────────────────────────────────
 
 class AdminTabAutorizados extends ConsumerWidget {
@@ -270,6 +282,43 @@ class _AutorizadoTileState extends State<_AutorizadoTile> {
   }
 }
 
+// ─── Toggle button helper ─────────────────────────────────────────────────────
+
+class _ToggleBtn extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  const _ToggleBtn(
+      {required this.label, required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? AppTheme.goldColor.withAlpha(25) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: active ? AppTheme.goldColor : AppTheme.darkBorder,
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: active ? AppTheme.goldColor : AppTheme.textMuted,
+            fontSize: 11,
+            fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Formulario añadir acceso ─────────────────────────────────────────────────
 
 class _FormAnadirAcceso extends ConsumerStatefulWidget {
@@ -283,7 +332,9 @@ class _FormAnadirAcceso extends ConsumerStatefulWidget {
 class _FormAnadirAccesoState extends ConsumerState<_FormAnadirAcceso> {
   final _emailCtrl = TextEditingController();
   String? _entidadId;
-  bool _enviando = false;
+  String? _usuarioId;   // id del usuario existente seleccionado
+  bool _modoNuevo = false; // false = elegir usuario existente, true = email nuevo
+  bool _enviando  = false;
 
   @override
   void dispose() {
@@ -292,14 +343,37 @@ class _FormAnadirAccesoState extends ConsumerState<_FormAnadirAcceso> {
   }
 
   Future<void> _agregar() async {
-    final email = _emailCtrl.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Introduce un email válido'),
-        backgroundColor: Colors.redAccent,
-      ));
-      return;
+    // Determinar email a usar
+    String email;
+    if (_modoNuevo) {
+      email = _emailCtrl.text.trim();
+      if (email.isEmpty || !email.contains('@')) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Introduce un email valido'),
+          backgroundColor: Colors.redAccent,
+        ));
+        return;
+      }
+    } else {
+      if (_usuarioId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Selecciona un usuario'),
+          backgroundColor: Colors.redAccent,
+        ));
+        return;
+      }
+      final usuarios = ref.read(_usuariosProvider).value ?? [];
+      final match = usuarios.where((u) => u['id'] == _usuarioId).toList();
+      if (match.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Usuario no encontrado'),
+          backgroundColor: Colors.redAccent,
+        ));
+        return;
+      }
+      email = match.first['email'] as String? ?? '';
     }
+
     if (_entidadId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Selecciona una entidad'),
@@ -320,11 +394,14 @@ class _FormAnadirAccesoState extends ConsumerState<_FormAnadirAcceso> {
 
       final invited = res.data?['invited'] as bool? ?? false;
       final msg = invited
-          ? 'Invitación enviada y acceso concedido'
+          ? 'Invitacion enviada y acceso concedido'
           : 'Acceso concedido al usuario existente';
 
       _emailCtrl.clear();
-      setState(() => _entidadId = null);
+      setState(() {
+        _entidadId = null;
+        _usuarioId = null;
+      });
       widget.onAdded();
 
       if (mounted) {
@@ -350,6 +427,7 @@ class _FormAnadirAccesoState extends ConsumerState<_FormAnadirAcceso> {
   @override
   Widget build(BuildContext context) {
     final entidadesAsync = ref.watch(_entidadesAccesoProvider);
+    final usuariosAsync  = ref.watch(_usuariosProvider);
 
     return Container(
       color: AppTheme.darkCard,
@@ -364,26 +442,89 @@ class _FormAnadirAccesoState extends ConsumerState<_FormAnadirAcceso> {
                   fontSize: 13,
                   fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
+
+          // ── Toggle modo ───────────────────────────────────────────────
+          Row(children: [
+            Expanded(
+              child: _ToggleBtn(
+                label: 'Usuario existente',
+                active: !_modoNuevo,
+                onTap: () => setState(() {
+                  _modoNuevo = false;
+                  _emailCtrl.clear();
+                }),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _ToggleBtn(
+                label: 'Email nuevo',
+                active: _modoNuevo,
+                onTap: () => setState(() {
+                  _modoNuevo = true;
+                  _usuarioId = null;
+                }),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 10),
+
+          // ── Campos ────────────────────────────────────────────────────
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // Email
+            // Usuario existente O email nuevo
             Expanded(
               flex: 5,
-              child: TextField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(
-                    color: AppTheme.textPrimary, fontSize: 13),
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  isDense: true,
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-              ),
+              child: _modoNuevo
+                  // Email libre
+                  ? TextField(
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      style: const TextStyle(
+                          color: AppTheme.textPrimary, fontSize: 13),
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        isDense: true,
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    )
+                  // Dropdown usuarios existentes
+                  : usuariosAsync.when(
+                      loading: () => const Padding(
+                        padding: EdgeInsets.only(top: 14),
+                        child: LinearProgressIndicator(),
+                      ),
+                      error: (_, __) => const Text('Error al cargar usuarios',
+                          style: TextStyle(
+                              color: Colors.redAccent, fontSize: 12)),
+                      data: (usuarios) => DropdownButtonFormField<String>(
+                        value: _usuarioId,
+                        isExpanded: true,
+                        style: const TextStyle(
+                            color: AppTheme.textPrimary, fontSize: 13),
+                        dropdownColor: AppTheme.darkCard,
+                        decoration: const InputDecoration(
+                          labelText: 'Usuario',
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                        ),
+                        items: usuarios
+                            .map((u) => DropdownMenuItem<String>(
+                                  value: u['id'] as String,
+                                  child: Text(
+                                    u['email'] as String? ?? '',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (v) => setState(() => _usuarioId = v),
+                      ),
+                    ),
             ),
             const SizedBox(width: 8),
 
-            // Entidad dropdown
+            // Entidad dropdown (siempre visible)
             Expanded(
               flex: 5,
               child: entidadesAsync.when(
@@ -421,6 +562,7 @@ class _FormAnadirAccesoState extends ConsumerState<_FormAnadirAcceso> {
             ),
           ]),
           const SizedBox(height: 10),
+
           ElevatedButton.icon(
             onPressed: _enviando ? null : _agregar,
             icon: _enviando
@@ -430,7 +572,7 @@ class _FormAnadirAccesoState extends ConsumerState<_FormAnadirAcceso> {
                         strokeWidth: 2, color: AppTheme.darkBg))
                 : const Icon(Icons.add_circle_outline, size: 16),
             label: Text(
-              _enviando ? 'Procesando…' : 'Añadir',
+              _enviando ? 'Procesando...' : 'Añadir',
               style: const TextStyle(fontSize: 13),
             ),
             style: ElevatedButton.styleFrom(
