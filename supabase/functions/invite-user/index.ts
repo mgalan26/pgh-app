@@ -72,20 +72,43 @@ serve(async (req) => {
       userId = existing.id
     }
 
-    // ── Paso 2: upsert en usuarios_autorizados ────────────────────────────
-    // Comprobar si ya existe el par (usuario_id, entidad_id)
-    const { data: existing } = await supabase
+    // ── Paso 2: crear perfil en usuarios si aún no existe ────────────────
+    // El registro se crea en el momento de la invitación; el usuario
+    // lo completará (nombre, apellido, etc.) cuando entre por primera vez.
+    const { data: usuarioExistente } = await supabase
+      .from('usuarios')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (!usuarioExistente) {
+      const { error: usuarioError } = await supabase
+        .from('usuarios')
+        .insert({
+          id:                    userId,
+          email,
+          nombre:                '',
+          apellido:              '',
+          activo:                true,
+          email_verificado:      false,
+          acepta_comunicaciones: false,
+        })
+      if (usuarioError) throw usuarioError
+    }
+
+    // ── Paso 3: upsert en usuarios_autorizados ────────────────────────────
+    const { data: autorizadoExistente } = await supabase
       .from('usuarios_autorizados')
       .select('id')
       .eq('usuario_id', userId)
       .eq('entidad_id', entidad_id)
       .maybeSingle()
 
-    if (existing) {
+    if (autorizadoExistente) {
       const { error } = await supabase
         .from('usuarios_autorizados')
         .update({ estado: 'activo', email })
-        .eq('id', existing.id)
+        .eq('id', autorizadoExistente.id)
       if (error) throw error
     } else {
       const { error } = await supabase
