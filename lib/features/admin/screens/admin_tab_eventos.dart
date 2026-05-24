@@ -501,6 +501,17 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
       return null;
     }
   }();
+  late TimeOfDay? _horaInicio = () {
+    try {
+      final raw = widget.evento['hora_inicio'] as String?;
+      if (raw == null) return null;
+      final parts = raw.split(':');
+      return TimeOfDay(
+          hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    } catch (_) {
+      return null;
+    }
+  }();
   bool _guardando       = false;
   bool _subiendoPortada = false;
 
@@ -562,6 +573,23 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
     if (picked != null) setState(() => _fechaInicio = picked);
   }
 
+  Future<void> _pickHora() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _horaInicio ?? const TimeOfDay(hour: 18, minute: 0),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppTheme.goldColor,
+            surface: AppTheme.darkCard,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _horaInicio = picked);
+  }
+
   Future<void> _subirImagenPortada() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
@@ -619,6 +647,10 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
         'tipo':                _tipo,
         'estado':              _estado,
         'fecha_inicio':        DateFormat('yyyy-MM-dd').format(_fechaInicio!),
+        'hora_inicio':         _horaInicio != null
+            ? '${_horaInicio!.hour.toString().padLeft(2, '0')}:'
+              '${_horaInicio!.minute.toString().padLeft(2, '0')}:00'
+            : null,
         'ponente_id':          _ponenteId,
         'entidad_id':          _entidadId,
         'tiene_presencial':    _tienePresencial,
@@ -681,23 +713,46 @@ class _EventoEditSheetState extends State<_EventoEditSheet> {
               _tf(_descripcionCtrl, 'Descripción', maxLines: 3),
               const SizedBox(height: 10),
 
-              // Fecha
-              OutlinedButton.icon(
-                onPressed: _pickFecha,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _fechaInicio != null
-                      ? AppTheme.goldColor
-                      : AppTheme.textMuted,
-                  side: BorderSide(
-                      color: _fechaInicio != null
-                          ? AppTheme.goldColor.withAlpha(120)
-                          : AppTheme.darkBorder),
+              // Fecha y hora
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickFecha,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _fechaInicio != null
+                          ? AppTheme.goldColor
+                          : AppTheme.textMuted,
+                      side: BorderSide(
+                          color: _fechaInicio != null
+                              ? AppTheme.goldColor.withAlpha(120)
+                              : AppTheme.darkBorder),
+                    ),
+                    icon: const Icon(Icons.calendar_today, size: 16),
+                    label: Text(_fechaInicio != null
+                        ? DateFormat('d MMM yyyy', 'es').format(_fechaInicio!)
+                        : 'Fecha *'),
+                  ),
                 ),
-                icon: const Icon(Icons.calendar_today, size: 16),
-                label: Text(_fechaInicio != null
-                    ? DateFormat('d MMM yyyy', 'es').format(_fechaInicio!)
-                    : 'Fecha *'),
-              ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickHora,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _horaInicio != null
+                          ? AppTheme.goldColor
+                          : AppTheme.textMuted,
+                      side: BorderSide(
+                          color: _horaInicio != null
+                              ? AppTheme.goldColor.withAlpha(120)
+                              : AppTheme.darkBorder),
+                    ),
+                    icon: const Icon(Icons.access_time, size: 16),
+                    label: Text(_horaInicio != null
+                        ? _horaInicio!.format(context)
+                        : 'Hora'),
+                  ),
+                ),
+              ]),
               const SizedBox(height: 10),
 
               // Tipo
