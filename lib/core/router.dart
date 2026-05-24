@@ -14,7 +14,7 @@ import 'package:pgh_app/features/auth/screens/set_password_screen.dart';
 import 'package:pgh_app/features/admin/screens/admin_screen.dart';
 import 'package:pgh_app/features/admin/screens/cola_eventos_screen.dart';
 import 'package:pgh_app/features/admin/screens/ponentes_screen.dart' as admin_ponentes;
-import 'package:pgh_app/features/admin/screens/admin_crear_evento_screen.dart';
+import 'package:pgh_app/features/gestion/screens/evento_form_screen.dart';
 import 'package:pgh_app/features/cuenta/cuenta_screen.dart';
 import 'package:pgh_app/features/autorizado/screens/autorizado_screen.dart';
 import 'package:pgh_app/features/autorizado/screens/solicitar_autorizacion_screen.dart';
@@ -143,7 +143,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: AppRoutes.adminCrearEvento,
-            builder: (_, __) => const AdminCrearEventoScreen(),
+            builder: (_, __) => const EventoFormScreen(),
           ),
           GoRoute(
             path: AppRoutes.cuenta,
