@@ -7,11 +7,45 @@ import 'package:pgh_app/core/theme.dart';
 
 final _autorizadosProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final data = await Supabase.instance.client
+  final sb = Supabase.instance.client;
+
+  // 1. Cargar autorizaciones con entidad
+  final data = await sb
       .from('usuarios_autorizados')
       .select('*, entidades(nombre)')
       .order('created_at', ascending: false);
-  return List<Map<String, dynamic>>.from(data as List);
+  final list = List<Map<String, dynamic>>.from(data as List);
+
+  // 2. Buscar emails que faltan en la tabla 'usuarios'
+  final sinEmail = list
+      .where((r) {
+        final e = r['email'] as String?;
+        return e == null || e.isEmpty;
+      })
+      .map((r) => r['usuario_id'] as String)
+      .toSet()
+      .toList();
+
+  if (sinEmail.isEmpty) return list;
+
+  final usersData = await sb
+      .from('usuarios')
+      .select('id, email')
+      .inFilter('id', sinEmail);
+
+  final emailMap = <String, String>{
+    for (final u in usersData as List)
+      if (u['id'] != null && u['email'] != null)
+        u['id'] as String: u['email'] as String,
+  };
+
+  // 3. Fusionar
+  return list.map((r) {
+    final existingEmail = r['email'] as String?;
+    if (existingEmail != null && existingEmail.isNotEmpty) return r;
+    final resolved = emailMap[r['usuario_id'] as String? ?? ''];
+    return resolved != null ? {...r, 'email': resolved} : r;
+  }).toList();
 });
 
 final _entidadesAccesoProvider =
@@ -146,9 +180,10 @@ class _AutorizadoTileState extends State<_AutorizadoTile> {
 
   @override
   Widget build(BuildContext context) {
-    final email   = widget.item['email'] as String?
-        ?? widget.item['usuario_id'] as String?
-        ?? '—';
+    final rawEmail = widget.item['email'] as String?;
+    final email = (rawEmail != null && rawEmail.isNotEmpty)
+        ? rawEmail
+        : '(sin email)';
     final entidad = widget.item['entidades'] as Map<String, dynamic>?;
     final entNom  = entidad?['nombre'] as String? ?? '—';
     final estado  = widget.item['estado'] as String? ?? 'pendiente';
