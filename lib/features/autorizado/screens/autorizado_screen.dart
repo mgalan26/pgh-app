@@ -420,23 +420,12 @@ class _EventoFormState extends ConsumerState<_EventoForm> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _guardando = true);
     try {
-      final sb     = Supabase.instance.client;
-      final userId = sb.auth.currentUser!.id;
-
-      // Buscar organizador_id de la entidad como fallback
-      final orgData = await sb
-          .from('organizadores')
-          .select('id')
-          .eq('entidad_id', widget.entidadId)
-          .limit(1)
-          .maybeSingle();
-      final organizadorId = orgData?['id'] as String? ?? userId;
+      final sb = Supabase.instance.client;
 
       final payload = {
         'nombre':            _nombreCtrl.text.trim(),
         'descripcion':       _descripcionCtrl.text.trim().isEmpty ? null : _descripcionCtrl.text.trim(),
         'entidad_id':        widget.entidadId,
-        'organizador_id':    organizadorId,
         'pais':              _pais,
         'ciudad':            _ciudadCtrl.text.trim(),
         'tipo':              _tipo,

@@ -19,7 +19,7 @@ final eventosAdminProvider =
           'url_online, venue_nombre_libre, es_gratuito, url_reserva, '
           'email_contacto, enlace_web, coorganizador_nombre, coorganizador_web, '
           'nota_moderacion, ponente_id, '
-          'organizadores(nombre, apellido, email, entidades(nombre)), '
+          'entidades(nombre), '
           'ponentes(id, nombre, apellido, cargo)')
       .order('created_at', ascending: false);
   return List<Map<String, dynamic>>.from(data as List);
@@ -121,12 +121,7 @@ class _TarjetaEventoAdmin extends ConsumerWidget {
     final pais   = evento['pais']   as String? ?? '';
     final color  = _colorEstado(estado);
 
-    final org      = evento['organizadores'] as Map<String, dynamic>?;
-    final entidad  = org?['entidades'] as Map<String, dynamic>?;
-    final orgNombre = org != null
-        ? '${org['nombre'] ?? ''} ${org['apellido'] ?? ''}'.trim()
-        : '';
-    final entidadNombre = entidad?['nombre'] as String? ?? '';
+    final entidadNombre = (evento['entidades'] as Map<String, dynamic>?)?['nombre'] as String? ?? '';
 
     DateTime? fecha;
     if (evento['fecha_inicio'] != null) {
@@ -171,12 +166,10 @@ class _TarjetaEventoAdmin extends ConsumerWidget {
             Text('$fechaStr · $ciudad, $pais',
                 style: const TextStyle(
                     color: AppTheme.textSecondary, fontSize: 12)),
-            if (orgNombre.isNotEmpty || entidadNombre.isNotEmpty) ...[
+            if (entidadNombre.isNotEmpty) ...[
               const SizedBox(height: 2),
               Text(
-                [orgNombre, entidadNombre]
-                    .where((s) => s.isNotEmpty)
-                    .join(' · '),
+                entidadNombre,
                 style: const TextStyle(
                     color: AppTheme.textMuted, fontSize: 12),
               ),
