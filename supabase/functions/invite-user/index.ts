@@ -37,6 +37,14 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
+    // ── Obtener nombre de la entidad ──────────────────────────────────────
+    const { data: entidadData } = await supabase
+      .from('entidades')
+      .select('nombre')
+      .eq('id', entidad_id)
+      .maybeSingle()
+    const entidadNombre: string = entidadData?.nombre ?? ''
+
     // ── Paso 1: invitar o localizar usuario ───────────────────────────────
     let userId: string
     let invited: boolean
@@ -44,6 +52,7 @@ serve(async (req) => {
     const { data: inviteData, error: inviteError } =
       await supabase.auth.admin.inviteUserByEmail(email, {
         redirectTo: 'https://agenda.appgh.net/auth/callback',
+        data: { entidad_nombre: entidadNombre },
       })
 
     if (!inviteError) {
@@ -78,7 +87,10 @@ serve(async (req) => {
       const { error: linkError } = await supabase.auth.admin.generateLink({
         type: linkType,
         email,
-        options: { redirectTo: 'https://agenda.appgh.net/auth/callback' },
+        options: {
+          redirectTo: 'https://agenda.appgh.net/auth/callback',
+          data: { entidad_nombre: entidadNombre },
+        },
       })
       invited = !linkError
     }
