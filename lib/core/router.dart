@@ -14,6 +14,7 @@ import 'package:pgh_app/features/admin/screens/cola_eventos_screen.dart';
 import 'package:pgh_app/features/admin/screens/ponentes_screen.dart' as admin_ponentes;
 import 'package:pgh_app/features/gestion/screens/evento_form_screen.dart';
 import 'package:pgh_app/features/cuenta/cuenta_screen.dart';
+import 'package:pgh_app/features/autorizado/screens/autorizado_screen.dart';
 import 'package:pgh_app/features/shell/main_shell.dart';
 
 /// Ruta inicial de la app. main.dart puede sobreescribirla antes de runApp
@@ -36,6 +37,7 @@ class AppRoutes {
   static const adminPonentes       = '/admin/ponentes';
   static const adminCrearEvento    = '/admin/crear-evento';
   static const cuenta              = '/cuenta';
+  static const autorizado          = '/autorizado';
   // kept for ponente profile (future use)
   static const miPerfil            = '/gestion/perfil';
 }
@@ -53,6 +55,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.login;
       }
       if ((loc == AppRoutes.admin || loc.startsWith('/admin/')) && !isLoggedIn) {
+        return AppRoutes.login;
+      }
+      if (loc == AppRoutes.autorizado && !isLoggedIn) {
         return AppRoutes.login;
       }
       return null;
@@ -124,6 +129,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.cuenta,
             builder: (_, __) => const CuentaScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.autorizado,
+            builder: (_, __) => const AutorizadoScreen(),
           ),
         ],
       ),

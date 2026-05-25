@@ -12,11 +12,15 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location         = GoRouterState.of(context).matchedLocation;
-    final authAsync    = ref.watch(authStateProvider);
+    final authAsync           = ref.watch(authStateProvider);
+    final autorizacionesAsync = ref.watch(misAutorizacionesProvider);
+    final invitacionesAsync   = ref.watch(misInvitacionesProvider);
 
-    final isLoggedIn   = authAsync.value?.session != null;
-    final email        = authAsync.value?.session?.user.email?.toLowerCase() ?? '';
-    final isAdmin      = email == 'mgalan26@gmail.com';
+    final isLoggedIn     = authAsync.value?.session != null;
+    final email          = authAsync.value?.session?.user.email?.toLowerCase() ?? '';
+    final isAdmin        = email == 'mgalan26@gmail.com';
+    final tienePanel     = (autorizacionesAsync.valueOrNull?.isNotEmpty ?? false) ||
+                           (invitacionesAsync.valueOrNull?.isNotEmpty ?? false);
 
     // Tab activo según la ruta
     int currentTab;
@@ -26,6 +30,8 @@ class MainShell extends ConsumerWidget {
       currentTab = 2;
     } else if (location == AppRoutes.cuenta) {
       currentTab = 3;
+    } else if (location == AppRoutes.autorizado) {
+      currentTab = 4;
     } else if (location.startsWith('/admin')) {
       currentTab = 5;
     } else {
@@ -83,10 +89,21 @@ class MainShell extends ConsumerWidget {
                     }
                   },
                 ),
+                // 4 · Mi Panel (usuarios autorizados)
+                _Tab(
+                  icon: Icons.dashboard_outlined,
+                  label: 'Mi Panel',
+                  isCurrent: currentTab == 4,
+                  isEnabled: tienePanel,
+                  onTap: tienePanel
+                      ? () => context.go(AppRoutes.autorizado)
+                      : null,
+                ),
+                // 5 · Admin
                 _Tab(
                   icon: Icons.admin_panel_settings_outlined,
                   label: 'Admin',
-                  isCurrent: currentTab == 4,
+                  isCurrent: currentTab == 5,
                   isEnabled: isAdmin,
                   onTap: isAdmin ? () => context.go(AppRoutes.admin) : null,
                 ),

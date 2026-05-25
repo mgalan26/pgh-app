@@ -415,6 +415,39 @@ class Usuario {
   );
 }
 
+class UsuarioAutorizado {
+  final String id;
+  final String usuarioId;
+  final String email;
+  final String entidadId;
+  final String entidadNombre;
+  final String estado; // inactivo | invitado | solicitado | activo
+  final String? nota;
+  final DateTime createdAt;
+
+  const UsuarioAutorizado({
+    required this.id,
+    required this.usuarioId,
+    required this.email,
+    required this.entidadId,
+    required this.entidadNombre,
+    required this.estado,
+    this.nota,
+    required this.createdAt,
+  });
+
+  factory UsuarioAutorizado.fromJson(Map<String, dynamic> json) => UsuarioAutorizado(
+    id:            json['id'],
+    usuarioId:     json['usuario_id'],
+    email:         json['email'],
+    entidadId:     json['entidad_id'],
+    entidadNombre: (json['entidades'] as Map<String, dynamic>?)?['nombre'] ?? '',
+    estado:        json['estado'],
+    nota:          json['nota'],
+    createdAt:     DateTime.parse(json['created_at']),
+  );
+}
+
 class Tema {
   final String id;
   final String nombre;
