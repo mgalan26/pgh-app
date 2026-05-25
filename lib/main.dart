@@ -14,20 +14,6 @@ void main() async {
     anonKey: Env.supabaseAnonKey,
   );
 
-  // Manejar deep link de invitación / recuperación de contraseña.
-  // En Flutter web los parámetros llegan como fragment (#access_token=…).
-  final uri      = Uri.base;
-  final fragment = uri.fragment;
-  if (fragment.contains('type=invite') || fragment.contains('type=recovery')) {
-    final params      = Uri.splitQueryString(fragment);
-    final accessToken = params['access_token'];
-    if (accessToken != null) {
-      await Supabase.instance.client.auth.setSession(accessToken);
-      // Redirigir directamente a /set-password sin pasar por AuthCallbackScreen
-      appInitialRoute = AppRoutes.setPassword;
-    }
-  }
-
   runApp(
     const ProviderScope(
       child: PghApp(),

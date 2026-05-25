@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:pgh_app/core/providers/auth_provider.dart';
 import 'package:pgh_app/core/router.dart';
 import 'package:pgh_app/core/theme.dart';
 
@@ -48,14 +47,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // Admin
     if (emailLower == 'mgalan26@gmail.com') {
       context.go(AppRoutes.agenda);
-      return;
-    }
-
-    // Usuario autorizado → panel autorizado
-    final autorizados = await ref.read(usuarioAutorizadoProvider.future);
-    if (!mounted) return;
-    if (autorizados.isNotEmpty) {
-      context.go(AppRoutes.autorizado);
       return;
     }
 

@@ -415,45 +415,6 @@ class Usuario {
   );
 }
 
-class UsuarioAutorizado {
-  final String id;
-  final String usuarioId;
-  final String? email;
-  final String entidadId;
-  final String estado; // pendiente, activo, rechazado
-  final String? nota;
-  final DateTime createdAt;
-  final Entidad? entidad;
-
-  const UsuarioAutorizado({
-    required this.id,
-    required this.usuarioId,
-    this.email,
-    required this.entidadId,
-    required this.estado,
-    this.nota,
-    required this.createdAt,
-    this.entidad,
-  });
-
-  bool get isActivo    => estado == 'activo';
-  bool get isPendiente => estado == 'pendiente';
-
-  factory UsuarioAutorizado.fromJson(Map<String, dynamic> json) =>
-      UsuarioAutorizado(
-        id:        json['id'],
-        usuarioId: json['usuario_id'],
-        email:     json['email'],
-        entidadId: json['entidad_id'],
-        estado:    json['estado'],
-        nota:      json['nota'],
-        createdAt: DateTime.parse(json['created_at']),
-        entidad:   json['entidades'] != null
-                     ? Entidad.fromJson(json['entidades'] as Map<String, dynamic>)
-                     : null,
-      );
-}
-
 class Tema {
   final String id;
   final String nombre;

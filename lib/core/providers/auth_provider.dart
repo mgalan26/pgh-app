@@ -23,19 +23,6 @@ final isAdminProvider = Provider<bool>((ref) {
   return email == 'mgalan26@gmail.com';
 });
 
-final usuarioAutorizadoProvider =
-    FutureProvider<List<UsuarioAutorizado>>((ref) async {
-  final userId = ref.watch(currentUserIdProvider);
-  if (userId == null) return [];
-  final supabase = ref.watch(supabaseProvider);
-  final data = await supabase
-      .from('usuarios_autorizados')
-      .select('*, entidades(*)')
-      .eq('usuario_id', userId)
-      .eq('estado', 'activo');
-  return (data as List).map((e) => UsuarioAutorizado.fromJson(e)).toList();
-});
-
 final usuarioProvider = FutureProvider<Usuario?>((ref) async {
   final userId = ref.watch(currentUserIdProvider);
   if (userId == null) return null;

@@ -31,14 +31,7 @@ class ShellScreen extends ConsumerWidget {
           activeIcon: Icons.admin_panel_settings,
           route: AppRoutes.admin,
         ),
-      ] else if (isLoggedIn) ...[
-        const _TabItem(
-          label: 'Mi Panel',
-          icon: Icons.dashboard_outlined,
-          activeIcon: Icons.dashboard,
-          route: AppRoutes.autorizado,
-        ),
-      ] else ...[
+      ] else if (!isLoggedIn) ...[
         const _TabItem(
           label: 'Acceder',
           icon: Icons.person_outline,

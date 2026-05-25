@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pgh_app/core/providers/auth_provider.dart';
 import 'package:pgh_app/features/agenda/screens/agenda_screen.dart';
@@ -10,15 +9,11 @@ import 'package:pgh_app/features/agenda/screens/ponente_detalle_screen.dart';
 import 'package:pgh_app/features/agenda/screens/entidad_detalle_screen.dart';
 import 'package:pgh_app/features/auth/screens/login_screen.dart';
 import 'package:pgh_app/features/auth/screens/registro_usuario_screen.dart';
-import 'package:pgh_app/features/auth/screens/auth_callback_screen.dart';
-import 'package:pgh_app/features/auth/screens/set_password_screen.dart';
 import 'package:pgh_app/features/admin/screens/admin_screen.dart';
 import 'package:pgh_app/features/admin/screens/cola_eventos_screen.dart';
 import 'package:pgh_app/features/admin/screens/ponentes_screen.dart' as admin_ponentes;
 import 'package:pgh_app/features/gestion/screens/evento_form_screen.dart';
 import 'package:pgh_app/features/cuenta/cuenta_screen.dart';
-import 'package:pgh_app/features/autorizado/screens/autorizado_screen.dart';
-import 'package:pgh_app/features/autorizado/screens/solicitar_autorizacion_screen.dart';
 import 'package:pgh_app/features/shell/main_shell.dart';
 
 /// Ruta inicial de la app. main.dart puede sobreescribirla antes de runApp
@@ -41,10 +36,6 @@ class AppRoutes {
   static const adminPonentes       = '/admin/ponentes';
   static const adminCrearEvento    = '/admin/crear-evento';
   static const cuenta              = '/cuenta';
-  static const autorizado          = '/autorizado';
-  static const solicitarAutorizacion = '/solicitar-autorizacion';
-  static const setPassword           = '/set-password';
-  static const authCallback          = '/auth/callback';
   // kept for ponente profile (future use)
   static const miPerfil            = '/gestion/perfil';
 }
@@ -63,16 +54,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
       if ((loc == AppRoutes.admin || loc.startsWith('/admin/')) && !isLoggedIn) {
         return AppRoutes.login;
-      }
-      if (loc == AppRoutes.autorizado && !isLoggedIn) {
-        return AppRoutes.login;
-      }
-      if (loc == AppRoutes.solicitarAutorizacion && !isLoggedIn) {
-        return AppRoutes.login;
-      }
-      if (loc == AppRoutes.setPassword) {
-        final session = Supabase.instance.client.auth.currentSession;
-        if (session == null) return AppRoutes.login;
       }
       return null;
     },
@@ -94,17 +75,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.registroUsuario,
         builder: (_, __) => const RegistroUsuarioScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.setPassword,
-        builder: (_, __) => const SetPasswordScreen(),
-      ),
-      // Callback de invitación / recuperación de contraseña.
-      // Sin guard: llega sin sesión activa y el token está en el hash de la URL.
-      GoRoute(
-        path: AppRoutes.authCallback,
-        builder: (_, __) => const AuthCallbackScreen(),
-      ),
-
       // ── Shell con bottom nav ──────────────────────────────────────────────
       ShellRoute(
         builder: (context, state, child) => MainShell(child: child),
@@ -154,14 +124,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.cuenta,
             builder: (_, __) => const CuentaScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.autorizado,
-            builder: (_, __) => const AutorizadoScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.solicitarAutorizacion,
-            builder: (_, __) => const SolicitarAutorizacionScreen(),
           ),
         ],
       ),
