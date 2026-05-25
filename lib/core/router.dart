@@ -20,6 +20,10 @@ import 'package:pgh_app/features/autorizado/screens/autorizado_screen.dart';
 import 'package:pgh_app/features/autorizado/screens/solicitar_autorizacion_screen.dart';
 import 'package:pgh_app/features/shell/main_shell.dart';
 
+/// Ruta inicial de la app. main.dart puede sobreescribirla antes de runApp
+/// para manejar deep links de invitación sin pasar por AuthCallbackScreen.
+String appInitialRoute = AppRoutes.agenda;
+
 class AppRoutes {
   static const agenda              = '/agenda';
   static const entidades           = '/entidades';
@@ -48,7 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
   return GoRouter(
-    initialLocation: AppRoutes.agenda,
+    initialLocation: appInitialRoute,
     redirect: (context, state) {
       final loc = state.matchedLocation;
       if (loc == '/') return AppRoutes.agenda;
