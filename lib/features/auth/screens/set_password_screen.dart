@@ -96,6 +96,8 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
+    // ignore: avoid_print
+    print('[SetPassword] build — user: ${user?.id}, email: ${user?.email}, session: ${Supabase.instance.client.auth.currentSession != null}');
 
     return Scaffold(
       backgroundColor: AppTheme.darkBg,

@@ -45,17 +45,26 @@ class _AuthCallbackScreenState extends State<AuthCallbackScreen> {
         : uri.queryParameters;
     final type = params['type'];
 
+    // ignore: avoid_print
+    print('[AuthCallback] _processCallback — uri: $uri, fragment: "$fragment", type: $type, hasSession: ${Supabase.instance.client.auth.currentSession != null}');
+
     // Si el SDK ya procesó el hash durante Supabase.initialize(), la sesión
     // ya está disponible en currentSession.
     if (Supabase.instance.client.auth.currentSession != null) {
+      // ignore: avoid_print
+      print('[AuthCallback] sesion ya disponible, redirigiendo...');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _redirect(type);
       });
       return;
     }
 
+    // ignore: avoid_print
+    print('[AuthCallback] esperando SIGNED_IN...');
     // Si todavía no hay sesión, esperar el evento SIGNED_IN del SDK.
     _sub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      // ignore: avoid_print
+      print('[AuthCallback] authStateChange event: ${data.event}');
       if (data.event == AuthChangeEvent.signedIn && mounted) {
         _redirect(type);
       }
@@ -63,6 +72,8 @@ class _AuthCallbackScreenState extends State<AuthCallbackScreen> {
   }
 
   void _redirect(String? type) {
+    // ignore: avoid_print
+    print('[AuthCallback] _redirect — type: $type, destino: ${(type == "invite" || type == "recovery") ? AppRoutes.setPassword : AppRoutes.agenda}');
     // Invitación o recuperación de contraseña → pantalla de establecer clave.
     // Cualquier otro flujo (magic link, etc.) → agenda.
     if (type == 'invite' || type == 'recovery') {
