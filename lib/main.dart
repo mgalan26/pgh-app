@@ -22,8 +22,8 @@ void main() async {
     final params       = Uri.splitQueryString(fragment);
     final accessToken  = params['access_token'];
     final refreshToken = params['refresh_token'];
-    if (accessToken != null && refreshToken != null) {
-      await Supabase.instance.client.auth.setSession(accessToken, refreshToken);
+    if (accessToken != null) {
+      await Supabase.instance.client.auth.setSession(accessToken);
     }
   }
 
