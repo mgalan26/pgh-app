@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pgh_app/core/providers/auth_provider.dart';
 import 'package:pgh_app/features/agenda/screens/agenda_screen.dart';
@@ -69,8 +70,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (loc == AppRoutes.solicitarAutorizacion && !isLoggedIn) {
         return AppRoutes.login;
       }
-      if (loc == AppRoutes.setPassword && !isLoggedIn) {
-        return AppRoutes.login;
+      if (loc == AppRoutes.setPassword) {
+        final session = Supabase.instance.client.auth.currentSession;
+        if (session == null) return AppRoutes.login;
       }
       return null;
     },
