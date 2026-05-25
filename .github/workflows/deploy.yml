@@ -32,14 +32,11 @@ jobs:
       - name: Build web
         run: flutter build web --release
 
-      - name: Deploy via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          port: 22
-          local_path: './build/web/*'
-          remote_path: '/public_html'
-          sftp_only: true
-          delete_remote_files: true
+      - name: Deploy via PHP webhook
+        run: |
+          cd build/web
+          zip -r /tmp/deploy.zip .
+          curl -f -X POST \
+            -H "X-Deploy-Token: ${{ secrets.DEPLOY_TOKEN }}" \
+            --data-binary @/tmp/deploy.zip \
+            https://agenda.appgh.net/deploy.php
