@@ -11,12 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-
       - name: Create .env
+        shell: bash
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
@@ -24,19 +20,23 @@ jobs:
           echo "SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}" >> .env
 
       - name: Install dependencies
+        shell: bash
         run: flutter pub get
 
       - name: Generate env
+        shell: bash
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build web
+        shell: bash
         run: flutter build web --release
 
       - name: Deploy via PHP webhook
+        shell: bash
         run: |
           cd build/web
-          zip -r /tmp/deploy.zip .
+          zip -r "$TEMP/deploy.zip" .
           curl -f -X POST \
             -H "X-Deploy-Token: ${{ secrets.DEPLOY_TOKEN }}" \
-            --data-binary @/tmp/deploy.zip \
+            --data-binary @"$TEMP/deploy.zip" \
             https://agenda.appgh.net/deploy.php
