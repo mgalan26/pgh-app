@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create .env
-        shell: pwsh
+        shell: powershell
         run: |
           "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" | Set-Content .env
           "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" | Add-Content .env
@@ -20,19 +20,19 @@ jobs:
           "SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}" | Add-Content .env
 
       - name: Install dependencies
-        shell: pwsh
+        shell: powershell
         run: flutter pub get
 
       - name: Generate env
-        shell: pwsh
+        shell: powershell
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build web
-        shell: pwsh
+        shell: powershell
         run: flutter build web --release
 
       - name: Deploy via PHP webhook
-        shell: pwsh
+        shell: powershell
         run: |
           $zipPath = "$env:TEMP\deploy.zip"
           Compress-Archive -Path build\web\* -DestinationPath $zipPath -Force
